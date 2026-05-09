@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>仓库档案管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>.container { padding: 20px; } .search-bar { margin-bottom: 20px; } .pagination { margin-top: 20px; text-align: right; }</style>
+</head>
+<body>
+<div id="app" class="container">
+    <h2>仓库档案管理</h2>
+    <div class="search-bar">
+        <el-input v-model="searchForm.warehouseName" placeholder="仓库名称" style="width: 200px; margin-right: 10px;"></el-input>
+        <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 120px; margin-right: 10px;">
+            <el-option label="启用" :value="1"></el-option>
+            <el-option label="禁用" :value="0"></el-option>
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="success" @click="showAddDialog">新增仓库</el-button>
+    </div>
+    <el-table :data="tableData" border v-loading="loading">
+        <el-table-column prop="warehouseCode" label="仓库编码" width="120"></el-table-column>
+        <el-table-column prop="warehouseName" label="仓库名称"></el-table-column>
+        <el-table-column prop="location" label="仓库地址"></el-table-column>
+        <el-table-column prop="managerId" label="负责人ID" width="120"></el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+            <template slot-scope="scope">
+                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">{{ scope.row.status === 1 ? '启用' : '禁用' }}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200">
+            <template slot-scope="scope">
+                <el-button size="mini" @click="showEditDialog(scope.row)">编辑</el-button>
+                <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+    <div class="pagination">
+        <el-pagination @current-change="handleCurrentChange" :current-page="pageNum" :page-size="pageSize" :total="total" layout="total, prev, pager, next"></el-pagination>
+    </div>
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="500px">
+        <el-form :model="form" label-width="100px">
+            <el-form-item label="仓库名称"><el-input v-model="form.warehouseName"></el-input></el-form-item>
+            <el-form-item label="仓库地址"><el-input v-model="form.location"></el-input></el-form-item>
+            <el-form-item label="负责人ID"><el-input v-model="form.managerId"></el-input></el-form-item>
+            <el-form-item label="状态">
+                <el-radio-group v-model="form.status">
+                    <el-radio :label="1">启用</el-radio>
+                    <el-radio :label="0">禁用</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="仓库编码"><el-input v-model="form.warehouseCode" disabled placeholder="自动生成"></el-input></el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitForm">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false, tableData: [], pageNum: 1, pageSize: 10, total: 0,
+        searchForm: { warehouseName: '', status: null },
+        dialogVisible: false, dialogTitle: '', isEdit: false,
+        form: { warehouseId: '', warehouseCode: '', warehouseName: '', location: '', managerId: '', status: 1 }
+    },
+    mounted() { this.loadData(); },
+    methods: {
+        loadData() {
+            this.loading = true;
+            axios.get('/warehouse/list', { params: { warehouseName: this.searchForm.warehouseName, status: this.searchForm.status, pageNum: this.pageNum, pageSize: this.pageSize }})
+                .then(res => { if (res.data.code === 200) { this.tableData = res.data.data.list; this.total = res.data.data.total; } this.loading = false; })
+                .catch(() => { this.loading = false; this.$message.error('加载失败'); });
+        },
+        search() { this.pageNum = 1; this.loadData(); },
+        reset() { this.searchForm = { warehouseName: '', status: null }; this.pageNum = 1; this.loadData(); },
+        handleCurrentChange(val) { this.pageNum = val; this.loadData(); },
+        showAddDialog() { this.isEdit = false; this.dialogTitle = '新增仓库'; this.form = { warehouseId: '', warehouseCode: '', warehouseName: '', location: '', managerId: '', status: 1 }; this.dialogVisible = true; },
+        showEditDialog(row) { this.isEdit = true; this.dialogTitle = '编辑仓库'; this.form = { ...row }; this.dialogVisible = true; },
+        submitForm() {
+            if (!this.form.warehouseName) {
+                this.$message.warning('请输入仓库名称');
+                return;
+            }
+            const url = this.isEdit ? '/warehouse/update' : '/warehouse/add';
+            axios.post(url, this.form)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(this.isEdit ? '修改成功' : '新增成功');
+                        this.dialogVisible = false;
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg || '操作失败');
+                    }
+                });
+        },
+        handleDelete(row) { this.$confirm('确认删除该仓库？', '提示', { type: 'warning' }).then(() => { axios.delete('/warehouse/delete/' + row.warehouseId).then(res => { if (res.data.code === 200) { this.$message.success('删除成功'); this.loadData(); } else { this.$message.error(res.data.msg); } }); }); }
+    }
+});
+</script>
+</body>
+</html>

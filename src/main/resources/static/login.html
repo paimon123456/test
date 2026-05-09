@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>药品管理系统 - 登录</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-container {
+            width: 450px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .login-header h2 {
+            font-size: 24px;
+            font-weight: 500;
+        }
+        .login-body {
+            padding: 40px 30px;
+        }
+        .toggle-btn {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .toggle-btn a {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .toggle-btn a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="login-container">
+        <div class="login-header">
+            <h2>{{isRegister ? '用户注册' : '用户登录'}}</h2>
+        </div>
+        <div class="login-body">
+            <el-form :model="form" label-width="80px">
+                <el-form-item label="账号">
+                    <el-input v-model="form.username" placeholder="请输入账号" prefix-icon="el-icon-user"></el-input>
+                </el-form-item>
+                <el-form-item label="密码">
+                    <el-input v-model="form.password" type="password" placeholder="请输入密码" prefix-icon="el-icon-lock" show-password></el-input>
+                </el-form-item>
+                <el-form-item label="姓名" v-if="isRegister">
+                    <el-input v-model="form.realName" placeholder="请输入姓名" prefix-icon="el-icon-user-solid"></el-input>
+                </el-form-item>
+                <el-form-item label="电话" v-if="isRegister">
+                    <el-input v-model="form.phone" placeholder="请输入电话号码" prefix-icon="el-icon-phone"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" style="width:100%" @click="submit" :loading="loading">
+                        {{isRegister ? '注 册' : '登 录'}}
+                    </el-button>
+                </el-form-item>
+            </el-form>
+            <div class="toggle-btn">
+                <a @click="toggleMode">{{isRegister ? '已有账号？去登录' : '没有账号？去注册'}}</a>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    new Vue({
+        el:'#app',
+        data:{
+            form:{username:'',password:'',realName:'',phone:''},
+            isRegister:false,
+            loading:false
+        },
+        methods:{
+            submit(){
+                if(this.isRegister){
+                    this.register();
+                }else{
+                    this.login();
+                }
+            },
+            login(){
+                this.loading = true;
+                axios.post('/admin/login',null,{
+                    params:{username:this.form.username,password:this.form.password}
+                }).then(res=>{
+                    this.loading = false;
+                    if(res.data.code===200) {
+                        this.$message.success('登录成功！');
+                        setTimeout(() => location.href='index.html', 500);
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                }).catch(()=>{
+                    this.loading = false;
+                    this.$message.error('网络错误，请检查后端服务是否启动');
+                })
+            },
+            register(){
+                if(!this.form.username || !this.form.password){
+                    this.$message.warning('账号和密码不能为空');
+                    return;
+                }
+                this.loading = true;
+                axios.post('/admin/register',this.form,{
+                    headers:{'Content-Type':'application/json'}
+                }).then(res=>{
+                    this.loading = false;
+                    if(res.data.code===200){
+                        this.$message.success('注册成功，请登录');
+                        this.isRegister=false;
+                        this.form={username:'',password:'',realName:'',phone:''};
+                    }else{
+                        this.$message.error(res.data.msg);
+                    }
+                }).catch(()=>{
+                    this.loading = false;
+                    this.$message.error('注册失败，请检查后端服务');
+                })
+            },
+            toggleMode(){
+                this.isRegister=!this.isRegister;
+                this.form={username:'',password:'',realName:'',phone:''};
+            }
+        }
+    })
+</script>
+</body>
+</html>

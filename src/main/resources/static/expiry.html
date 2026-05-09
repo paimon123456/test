@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>效期提醒管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>.container { padding: 20px; } .search-bar { margin-bottom: 20px; } .pagination { margin-top: 20px; text-align: right; }</style>
+</head>
+<body>
+<div id="app" class="container">
+    <h2>效期提醒管理</h2>
+    <div class="search-bar">
+        <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 120px; margin-right: 10px;">
+            <el-option label="未处理" value="未处理"></el-option>
+            <el-option label="已处理" value="已处理"></el-option>
+            <el-option label="已忽略" value="已忽略"></el-option>
+        </el-select>
+        <el-select v-model="searchForm.thresholdDays" placeholder="预警天数" clearable style="width: 120px; margin-right: 10px;">
+            <el-option label="7天内" :value="7"></el-option>
+            <el-option label="30天内" :value="30"></el-option>
+            <el-option label="90天内" :value="90"></el-option>
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="warning" @click="generateRemind">手动生成提醒</el-button>
+    </div>
+    <el-table :data="tableData" border v-loading="loading">
+        <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+        <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+        <el-table-column prop="batchNo" label="批号" width="120"></el-table-column>
+        <el-table-column prop="stockNum" label="库存数量" width="90"></el-table-column>
+        <el-table-column prop="remainDays" label="剩余天数" width="90">
+            <template slot-scope="scope">
+                <el-tag :type="scope.row.remainDays <= 7 ? 'danger' : (scope.row.remainDays <= 30 ? 'warning' : 'info')">
+                    {{ scope.row.remainDays }}天
+                </el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column prop="expiryDate" label="有效期至" width="110"></el-table-column>
+        <el-table-column prop="thresholdDays" label="预警阈值" width="80">
+            <template slot-scope="scope">{{ scope.row.thresholdDays }}天</template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="90">
+            <template slot-scope="scope">
+                <el-tag :type="scope.row.status === '未处理' ? 'danger' : (scope.row.status === '已处理' ? 'success' : 'info')">{{ scope.row.status }}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column prop="remindTime" label="提醒时间" width="150"></el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+            <template slot-scope="scope">
+                <el-button size="mini" type="primary" v-if="scope.row.status === '未处理'" @click="handleRemind(scope.row)">处理</el-button>
+                <el-button size="mini" type="danger" v-if="scope.row.status === '未处理'" @click="applyScrap(scope.row)">申请报废</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+    <div class="pagination">
+        <el-pagination @current-change="handleCurrentChange" :current-page="pageNum" :page-size="pageSize" :total="total" layout="total, prev, pager, next"></el-pagination>
+    </div>
+    <el-dialog title="处理效期提醒" :visible.sync="dialogVisible" width="400px">
+        <p>药品：{{ currentRow.drugName }}</p>
+        <p>剩余天数：{{ currentRow.remainDays }}天</p>
+        <p>库存数量：{{ currentRow.stockNum }}</p>
+        <el-form label-width="80px">
+            <el-form-item label="处理方式">
+                <el-radio-group v-model="handleForm.status">
+                    <el-radio label="已处理">处理完成</el-radio>
+                    <el-radio label="已忽略">忽略</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitHandle">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false, tableData: [], pageNum: 1, pageSize: 10, total: 0,
+        searchForm: { status: '', thresholdDays: null },
+        dialogVisible: false, currentRow: {}, handleForm: { status: '已处理' }
+    },
+    mounted() { this.loadData(); },
+    methods: {
+        loadData() {
+            this.loading = true;
+            axios.get('/remind/list', { params: { status: this.searchForm.status, thresholdDays: this.searchForm.thresholdDays, pageNum: this.pageNum, pageSize: this.pageSize }})
+                .then(res => { if (res.data.code === 200) { this.tableData = res.data.data.list; this.total = res.data.data.total; } this.loading = false; })
+                .catch(() => { this.loading = false; this.$message.error('加载失败'); });
+        },
+        search() { this.pageNum = 1; this.loadData(); },
+        reset() { this.searchForm = { status: '', thresholdDays: null }; this.pageNum = 1; this.loadData(); },
+        handleCurrentChange(val) { this.pageNum = val; this.loadData(); },
+        generateRemind() {
+            this.$confirm('将扫描近效期药品并生成提醒，是否继续？', '提示', { type: 'info' })
+                .then(() => {
+                    axios.post('/remind/generate')
+                        .then(res => {
+                            if (res.data.code === 200) {
+                                this.$message.success('提醒生成成功');
+                                this.loadData();
+                            } else {
+                                this.$message.error(res.data.msg || '生成失败');
+                            }
+                        });
+                }).catch(() => {});
+        },
+        applyScrap(row) {
+            // 直接跳转到报废申请页面，带上参数
+            location.href = 'scrap.html?inventoryId=' + row.inventoryId + '&drugId=' + row.drugId + '&stockNum=' + row.stockNum;
+        },
+        handleRemind(row) { this.currentRow = row; this.handleForm.status = '已处理'; this.dialogVisible = true; },
+        submitHandle() {
+            axios.post('/remind/handle?remindId=' + this.currentRow.remindId + '&status=' + this.handleForm.status + '&operatorId=admin')
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('处理成功');
+                        this.dialogVisible = false;
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg || '处理失败');
+                    }
+                });
+        }
+    }
+});
+</script>
+</body>
+</html>

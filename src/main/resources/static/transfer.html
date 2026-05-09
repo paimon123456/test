@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>移库管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>.container { padding: 20px; } .search-bar { margin-bottom: 20px; } .pagination { margin-top: 20px; text-align: right; }</style>
+</head>
+<body>
+<div id="app" class="container">
+    <h2>移库管理</h2>
+    <div class="search-bar">
+        <el-select v-model="searchForm.srcWareId" placeholder="原仓库" clearable style="width: 150px; margin-right: 10px;">
+            <el-option v-for="item in warehouseList" :key="item.warehouseId" :label="item.warehouseName" :value="item.warehouseId"></el-option>
+        </el-select>
+        <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 120px; margin-right: 10px;">
+            <el-option label="申请中" value="申请中"></el-option>
+            <el-option label="已审核" value="已审核"></el-option>
+            <el-option label="已完成" value="已完成"></el-option>
+            <el-option label="已驳回" value="已驳回"></el-option>
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="success" @click="showApplyDialog">申请移库</el-button>
+    </div>
+    <el-table :data="tableData" border v-loading="loading">
+        <el-table-column prop="transferNo" label="移库单号" width="160"></el-table-column>
+        <el-table-column prop="srcWareName" label="原仓库"></el-table-column>
+        <el-table-column prop="destWareName" label="目标仓库"></el-table-column>
+        <el-table-column prop="transferNum" label="数量" width="80"></el-table-column>
+        <el-table-column prop="status" label="状态" width="90">
+            <template slot-scope="scope">
+                <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180">
+            <template slot-scope="scope">
+                <el-button size="mini" v-if="scope.row.status === '申请中'" @click="handleAudit(scope.row)">审核</el-button>
+                <el-button size="mini" type="success" v-if="scope.row.status === '已审核'" @click="handleFinish(scope.row)">完成</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+    <div class="pagination">
+        <el-pagination @current-change="handleCurrentChange" :current-page="pageNum" :page-size="pageSize" :total="total" layout="total, prev, pager, next"></el-pagination>
+    </div>
+    <el-dialog title="申请移库" :visible.sync="dialogVisible" width="500px">
+        <el-form :model="form" label-width="100px">
+            <el-form-item label="原仓库">
+                <el-select v-model="form.srcWareId" placeholder="选择原仓库" style="width: 100%;" @change="loadSrcInventory">
+                    <el-option v-for="item in warehouseList" :key="item.warehouseId" :label="item.warehouseName" :value="item.warehouseId"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="目标仓库">
+                <el-select v-model="form.destWareId" placeholder="选择目标仓库" style="width: 100%;">
+                    <el-option v-for="item in warehouseList" :key="item.warehouseId" :label="item.warehouseName" :value="item.warehouseId"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="选择库存">
+                <el-select v-model="form.inventoryId" placeholder="选择库存" style="width: 100%;" filterable>
+                    <el-option v-for="item in inventoryList" :key="item.inventoryId" :label="item.drugName + ' - ' + item.batchNo + ' (库存:' + item.stockNum + ')'" :value="item.inventoryId"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="移库数量"><el-input-number v-model="form.transferNum" :min="1" style="width: 100%;"></el-input-number></el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitApply">提交申请</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog title="审核移库申请" :visible.sync="auditDialogVisible" width="400px">
+        <p>移库单号：{{ currentRow.transferNo }}</p>
+        <p>原仓库：{{ currentRow.srcWareId }}</p>
+        <p>目标仓库：{{ currentRow.destWareId }}</p>
+        <p>移库数量：{{ currentRow.transferNum }}</p>
+        <el-form label-width="80px">
+            <el-form-item label="审核结果">
+                <el-radio-group v-model="auditForm.status">
+                    <el-radio label="已审核">通过</el-radio>
+                    <el-radio label="已驳回">驳回</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="auditDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitAudit">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false, tableData: [], warehouseList: [], inventoryList: [], pageNum: 1, pageSize: 10, total: 0,
+        searchForm: { srcWareId: '', status: '' },
+        dialogVisible: false, auditDialogVisible: false,
+        form: { srcWareId: '', destWareId: '', inventoryId: '', transferNum: 1 },
+        currentRow: {}, auditForm: { status: '已审核' }
+    },
+    mounted() { this.loadWarehouseList(); this.loadData(); },
+    methods: {
+        loadWarehouseList() { axios.get('/warehouse/list', { params: { pageSize: 100 } }).then(res => { if (res.data.code === 200) this.warehouseList = res.data.data.list; }); },
+        loadData() {
+            this.loading = true;
+            axios.get('/transfer/list', { params: { srcWareId: this.searchForm.srcWareId, status: this.searchForm.status, pageNum: this.pageNum, pageSize: this.pageSize }})
+                .then(res => { if (res.data.code === 200) { this.tableData = res.data.data.list; this.total = res.data.data.total; } this.loading = false; })
+                .catch(() => { this.loading = false; this.$message.error('加载失败'); });
+        },
+        loadSrcInventory() { if (this.form.srcWareId) { axios.get('/inventory/warehouse/' + this.form.srcWareId).then(res => { if (res.data.code === 200) this.inventoryList = res.data.data; }); } },
+        getStatusType(status) { const map = { '申请中': 'info', '已审核': 'warning', '已完成': 'success', '已驳回': 'danger' }; return map[status] || 'info'; },
+        search() { this.pageNum = 1; this.loadData(); },
+        reset() { this.searchForm = { srcWareId: '', status: '' }; this.pageNum = 1; this.loadData(); },
+        handleCurrentChange(val) { this.pageNum = val; this.loadData(); },
+        showApplyDialog() { this.form = { srcWareId: '', destWareId: '', inventoryId: '', transferNum: 1 }; this.dialogVisible = true; },
+        submitApply() {
+            if (!this.form.srcWareId || !this.form.destWareId || !this.form.inventoryId) {
+                this.$message.warning('请填写完整的移库信息');
+                return;
+            }
+            axios.post('/transfer/apply', this.form)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('申请成功');
+                        this.dialogVisible = false;
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg || '申请失败');
+                    }
+                });
+        },
+        handleAudit(row) { this.currentRow = row; this.auditForm.status = '已审核'; this.auditDialogVisible = true; },
+        submitAudit() { axios.post('/transfer/audit?transferId=' + this.currentRow.transferId + '&status=' + this.auditForm.status + '&auditorId=admin').then(res => { if (res.data.code === 200) { this.$message.success('审核成功'); this.auditDialogVisible = false; this.loadData(); } else { this.$message.error(res.data.msg); } }); },
+        handleFinish(row) { this.$confirm('确认完成移库？', '提示').then(() => { axios.post('/transfer/finish?transferId=' + row.transferId).then(res => { if (res.data.code === 200) { this.$message.success('完成移库'); this.loadData(); } else { this.$message.error(res.data.msg); } }); }); }
+    }
+});
+</script>
+</body>
+</html>

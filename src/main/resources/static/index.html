@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>药店管理系统 - 首页</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .header {
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            padding: 0 40px;
+            height: 70px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .header-right span { color: #606266; font-size: 14px; }
+        .logout-btn { 
+            background: linear-gradient(135deg, #f56c6c 0%, #f78989 100%); 
+            color: white; 
+            border: none; 
+            padding: 8px 20px; 
+            border-radius: 20px; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245,108,108,0.4); }
+        .container { max-width: 1400px; margin: 40px auto; padding: 0 30px; }
+        .welcome-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .welcome-card h2 { font-size: 28px; color: #303133; margin-bottom: 10px; }
+        .welcome-card p { color: #909399; font-size: 16px; }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        .module-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: 2px solid transparent;
+        }
+        .module-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(102,126,234,0.3);
+            border-color: #667eea;
+        }
+        .module-icon { font-size: 50px; margin-bottom: 15px; }
+        .module-title { font-size: 18px; font-weight: 600; color: #303133; margin-bottom: 8px; }
+        .module-desc { font-size: 14px; color: #909399; }
+        .icon-drug { color: #409EFF; }
+        .icon-warehouse { color: #67C23A; }
+        .icon-location { color: #E6A23C; }
+        .icon-inventory { color: #909399; }
+        .icon-transfer { color: #F56C6C; }
+        .icon-expiry { color: #9c27b0; }
+        .icon-scrap { color: #795548; }
+        .icon-admin { color: #00BCD4; }
+        .icon-role { color: #FF9800; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-s-shop"></i> 药店管理系统</h1>
+        <div class="header-right">
+            <span><i class="el-icon-user"></i> 欢迎使用</span>
+            <button class="logout-btn" @click="logout"><i class="el-icon-switch-button"></i> 退出登录</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="welcome-card">
+            <h2>欢迎使用药店管理系统</h2>
+            <p>请选择下方模块开始工作</p>
+        </div>
+        <div class="module-grid">
+            <div class="module-card" @click="goTo('drug.html')">
+                <div class="module-icon icon-drug"><i class="el-icon-s-order"></i></div>
+                <div class="module-title">药品管理</div>
+                <div class="module-desc">药品信息录入与维护</div>
+            </div>
+            <div class="module-card" @click="goTo('warehouse.html')">
+                <div class="module-icon icon-warehouse"><i class="el-icon-office-building"></i></div>
+                <div class="module-title">仓库档案</div>
+                <div class="module-desc">仓库基本信息管理</div>
+            </div>
+            <div class="module-card" @click="goTo('location.html')">
+                <div class="module-icon icon-location"><i class="el-icon-s-grid"></i></div>
+                <div class="module-title">库位管理</div>
+                <div class="module-desc">库区、货架、层位管理</div>
+            </div>
+            <div class="module-card" @click="goTo('inventory.html')">
+                <div class="module-icon icon-inventory"><i class="el-icon-box"></i></div>
+                <div class="module-title">库存查询</div>
+                <div class="module-desc">实时查询药品库存</div>
+            </div>
+            <div class="module-card" @click="goTo('transfer.html')">
+                <div class="module-icon icon-transfer"><i class="el-icon-rank"></i></div>
+                <div class="module-title">移库管理</div>
+                <div class="module-desc">仓库间库存调拨</div>
+            </div>
+            <div class="module-card" @click="goTo('expiry.html')">
+                <div class="module-icon icon-expiry"><i class="el-icon-warning"></i></div>
+                <div class="module-title">效期提醒</div>
+                <div class="module-desc">近效期药品预警</div>
+            </div>
+            <div class="module-card" @click="goTo('scrap.html')">
+                <div class="module-icon icon-scrap"><i class="el-icon-delete"></i></div>
+                <div class="module-title">药品报废</div>
+                <div class="module-desc">过期药品报废处理</div>
+            </div>
+            <div class="module-card" @click="goTo('admin.html')">
+                <div class="module-icon icon-admin"><i class="el-icon-user"></i></div>
+                <div class="module-title">账号管理</div>
+                <div class="module-desc">管理员账号管理</div>
+            </div>
+            <div class="module-card" @click="goTo('role.html')">
+                <div class="module-icon icon-role"><i class="el-icon-setting"></i></div>
+                <div class="module-title">角色权限</div>
+                <div class="module-desc">角色与权限配置</div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script>
+new Vue({
+    el: '#app',
+    methods: {
+        goTo(page) {
+            window.location.href = page;
+        },
+        logout() {
+            this.$confirm('确认退出系统？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                window.location.href = 'login.html';
+            }).catch(() => {});
+        }
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号管理</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #303133;
+            padding: 0 40px;
+            height: 70px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .header .action-btn {
+            color: #606266;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+            background: transparent;
+            border: 1px solid #dcdfe6;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .header .action-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .container {
+            max-width: 1800px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            padding: 35px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            background-size: 200% 100%;
+            animation: gradientMove 3s ease infinite;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .card-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 25px;
+            padding-bottom: 18px;
+            border-bottom: 3px solid transparent;
+            border-image: linear-gradient(90deg, #667eea, #764ba2, #667eea) 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-title::before {
+            content: '';
+            width: 5px;
+            height: 28px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .form-row .el-input {
+            flex: 1;
+            min-width: 220px;
+        }
+        .form-row .el-input .el-input__inner {
+            border-radius: 8px;
+            height: 42px;
+        }
+        .form-row .el-button--primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            height: 42px;
+            padding: 0 30px;
+            font-weight: 500;
+        }
+        .el-table th {
+            background: linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%) !important;
+            color: white !important;
+            font-weight: 500;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-normal {
+            background: #f0f9ff;
+            color: #67c23a;
+            border: 1px solid #e1f3d8;
+        }
+        .status-off {
+            background: #fef0f0;
+            color: #f56c6c;
+            border: 1px solid #fde2e2;
+        }
+        .el-table .el-button {
+            border-radius: 6px;
+            padding: 7px 15px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-user-solid"></i> 账号管理</h1>
+        <div class="header-actions">
+            <span class="action-btn" @click="gotoPage('index.html')">
+                <i class="el-icon-s-home"></i> 首页
+            </span>
+            <span class="action-btn" @click="gotoPage('drug.html')">
+                <i class="el-icon-first-aid-kit"></i> 药品
+            </span>
+            <span class="action-btn" @click="gotoPage('warehouse.html')">
+                <i class="el-icon-office-building"></i> 仓库
+            </span>
+            <span class="action-btn" @click="gotoPage('inventory.html')">
+                <i class="el-icon-box"></i> 库存
+            </span>
+            <span class="action-btn" @click="gotoPage('transfer.html')">
+                <i class="el-icon-rank"></i> 移库
+            </span>
+            <span class="action-btn" @click="gotoPage('expiry.html')">
+                <i class="el-icon-warning"></i> 效期
+            </span>
+            <span class="action-btn" @click="gotoPage('scrap.html')">
+                <i class="el-icon-delete"></i> 报废
+            </span>
+            <span class="action-btn" @click="gotoPage('role.html')">
+                <i class="el-icon-setting"></i> 角色
+            </span>
+            <span class="action-btn" @click="logout">
+                <i class="el-icon-switch-button"></i> 退出
+            </span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="card-title"><i class="el-icon-plus"></i> {{ editMode ? '编辑账号' : '新增账号' }}</div>
+            <div class="form-row">
+                <el-input v-model="form.username" placeholder="请输入账号" prefix-icon="el-icon-user"></el-input>
+                <el-input v-model="form.password" :type="editMode ? 'text' : 'password'" placeholder="请输入密码" prefix-icon="el-icon-lock"></el-input>
+                <el-input v-model="form.realName" placeholder="请输入真实姓名" prefix-icon="el-icon-user-solid"></el-input>
+            </div>
+            <div class="form-row">
+                <el-select v-model="form.role" placeholder="请选择角色" prefix-icon="el-icon-s-custom" style="flex:1;">
+                    <el-option label="管理员" value="管理员"></el-option>
+                    <el-option label="店长" value="店长"></el-option>
+                    <el-option label="药师" value="药师"></el-option>
+                    <el-option label="收银员" value="收银员"></el-option>
+                    <el-option label="库管" value="库管"></el-option>
+                </el-select>
+                <el-input v-model="form.phone" placeholder="请输入手机号" prefix-icon="el-icon-phone"></el-input>
+                <el-button v-if="!editMode" type="primary" @click="add" icon="el-icon-plus">添加账号</el-button>
+                <el-button v-if="editMode" type="primary" @click="update" icon="el-icon-check">保存修改</el-button>
+                <el-button v-if="editMode" @click="cancelEdit" icon="el-icon-close">取消</el-button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title"><i class="el-icon-s-operation"></i> 账号列表</div>
+            <el-table :data="list" style="width: 100%" stripe>
+                <el-table-column prop="userId" label="ID" width="80"></el-table-column>
+                <el-table-column prop="username" label="账号" width="150"></el-table-column>
+                <el-table-column prop="realName" label="真实姓名" width="150"></el-table-column>
+                <el-table-column prop="role" label="角色" width="120">
+                    <template slot-scope="scope">
+                        <el-tag size="medium" type="info">{{scope.row.role || '未分配'}}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="phone" label="手机号" width="150"></el-table-column>
+                <el-table-column label="状态" width="100">
+                    <template slot-scope="scope">
+                        <span class="status-badge" :class="scope.row.status===1?'status-normal':'status-off'">
+                            {{scope.row.status===1?'启用':'禁用'}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column label="操作" width="400" fixed="right">
+                    <template slot-scope="scope">
+                        <el-button size="mini" type="primary" @click="edit(scope.row)" icon="el-icon-edit">编辑</el-button>
+                        <el-button size="mini" :type="scope.row.status===1?'warning':'success'" 
+                                   @click="setStatus(scope.row.userId, scope.row.status===1?0:1)" 
+                                   icon="el-icon-switch-button">
+                            {{scope.row.status===1?'禁用':'启用'}}
+                        </el-button>
+                        <el-button size="mini" type="info" @click="resetPassword(scope.row)" icon="el-icon-refresh">重置密码</el-button>
+                        <el-button size="mini" type="danger" @click="del(scope.row.userId)" icon="el-icon-delete">删除</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </div>
+</div>
+<script>
+    new Vue({
+        el:'#app',
+        data:{
+            list:[],
+            form:{username:'',password:'',realName:'',role:'',phone:''},
+            editMode:false,
+            editId:null
+        },
+        created(){this.getList()},
+        methods:{
+            getList(){
+                axios.get('/admin/list').then(res=>{
+                    console.log('账号列表响应：', res.data);
+                    this.list=res.data.data||[];
+                    console.log('账号列表数据：', this.list);
+                }).catch(err => {
+                    console.error('获取账号列表失败：', err);
+                    this.$message.error('获取账号列表失败');
+                })
+            },
+            add(){
+                if(!this.form.username || !this.form.password || !this.form.realName){
+                    this.$message.warning('请填写完整信息');
+                    return;
+                }
+                if(!this.form.role){
+                    this.$message.warning('请选择角色');
+                    return;
+                }
+                axios.post('/admin/register',this.form).then(res=>{
+                    if(res.data.code===200){
+                        this.$message.success('添加成功');
+                        this.form={username:'',password:'',realName:'',role:'',phone:''};
+                        this.getList();
+                    }else{
+                        this.$message.error(res.data.msg||'添加失败');
+                    }
+                })
+            },
+            edit(row){
+                this.editMode = true;
+                this.editId = row.userId;
+                this.form = {
+                    username: row.username,
+                    password: row.password,
+                    realName: row.realName,
+                    role: row.role,
+                    phone: row.phone
+                };
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+            update(){
+                if(!this.form.username || !this.form.realName){
+                    this.$message.warning('请填写完整信息');
+                    return;
+                }
+                const data = Object.assign({}, this.form, { userId: this.editId });
+                axios.post('/admin/update', data).then(res=>{
+                    if(res.data.code===200){
+                        this.$message.success('修改成功');
+                        this.cancelEdit();
+                        this.getList();
+                    }else{
+                        this.$message.error(res.data.msg||'修改失败');
+                    }
+                })
+            },
+            cancelEdit(){
+                this.editMode = false;
+                this.editId = null;
+                this.form = {username:'',password:'',realName:'',role:'',phone:''};
+            },
+            setStatus(id,s){
+                const action = s===1?'启用':'禁用';
+                axios.get('/admin/status/'+id+'/'+s).then(res=>{
+                    if(res.data.code===200){
+                        this.$message.success(action+'成功');
+                        this.getList();
+                    }else{
+                        this.$message.error(res.data.msg||action+'失败');
+                    }
+                })
+            },
+            resetPassword(row){
+                this.$prompt('请输入新密码', '重置密码', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputPattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/,
+                    inputErrorMessage: '密码必须包含字母、数字和特殊字符，且至少8位'
+                }).then(({ value }) => {
+                    axios.post('/admin/resetPassword', { userId: row.userId, password: value }).then(res=>{
+                        if(res.data.code===200){
+                            this.$message.success('密码重置成功');
+                        }else{
+                            this.$message.error(res.data.msg||'密码重置失败');
+                        }
+                    })
+                }).catch(() => {});
+            },
+            del(id){
+                this.$confirm('确定要删除此账号吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(()=>{
+                    axios.get('/admin/delete/'+id).then(()=>{
+                        this.$message.success('删除成功');
+                        this.getList();
+                    })
+                }).catch(()=>{});
+            },
+            gotoPage(page){
+                location.href=page;
+            },
+            logout(){
+                location.href='login.html';
+            }
+        }
+    })
+</script>
+</body>
+</html>

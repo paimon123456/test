@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>药品报废管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>.container { padding: 20px; } .search-bar { margin-bottom: 20px; } .pagination { margin-top: 20px; text-align: right; }</style>
+</head>
+<body>
+<div id="app" class="container">
+    <h2>药品报废管理</h2>
+    <div class="search-bar">
+        <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 120px; margin-right: 10px;">
+            <el-option label="申请中" value="申请中"></el-option>
+            <el-option label="已审核" value="已审核"></el-option>
+            <el-option label="已审批" value="已审批"></el-option>
+            <el-option label="已执行" value="已执行"></el-option>
+            <el-option label="已驳回" value="已驳回"></el-option>
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="success" @click="showApplyDialog">申请报废</el-button>
+    </div>
+    <el-table :data="tableData" border v-loading="loading">
+        <el-table-column prop="scrapNo" label="报废单号" width="160"></el-table-column>
+        <el-table-column prop="drugName" label="药品名称"></el-table-column>
+        <el-table-column prop="batchNo" label="批号" width="120"></el-table-column>
+        <el-table-column prop="scrapNum" label="报废数量" width="90"></el-table-column>
+        <el-table-column prop="reason" label="报废原因"></el-table-column>
+        <el-table-column prop="status" label="状态" width="90">
+            <template slot-scope="scope">
+                <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200">
+            <template slot-scope="scope">
+                <el-button size="mini" v-if="scope.row.status === '申请中'" @click="handleAudit(scope.row)">审核</el-button>
+                <el-button size="mini" v-if="scope.row.status === '已审核'" @click="handleApprove(scope.row)">审批</el-button>
+                <el-button size="mini" type="danger" v-if="scope.row.status === '已审批'" @click="handleExecute(scope.row)">执行</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+    <div class="pagination">
+        <el-pagination @current-change="handleCurrentChange" :current-page="pageNum" :page-size="pageSize" :total="total" layout="total, prev, pager, next"></el-pagination>
+    </div>
+    <el-dialog title="申请报废" :visible.sync="applyDialogVisible" width="500px">
+        <el-form :model="applyForm" label-width="100px">
+            <el-form-item label="选择库存">
+                <el-select v-model="applyForm.inventoryId" placeholder="选择库存" style="width: 100%;" filterable @change="onInventoryChange">
+                    <el-option v-for="item in inventoryList" :key="item.inventoryId" :label="item.drugName + ' - ' + item.batchNo + ' (库存:' + item.stockNum + ')'" :value="item.inventoryId"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="药品ID"><el-input v-model="applyForm.drugId" disabled></el-input></el-form-item>
+            <el-form-item label="报废数量"><el-input-number v-model="applyForm.scrapNum" :min="1" style="width: 100%;"></el-input-number></el-form-item>
+            <el-form-item label="报废原因"><el-input type="textarea" v-model="applyForm.reason"></el-input></el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="applyDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitApply">提交申请</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog title="审核报废申请" :visible.sync="auditDialogVisible" width="400px">
+        <p>报废单号：{{ currentRow.scrapNo }}</p>
+        <p>药品：{{ currentRow.drugName }}</p>
+        <p>报废数量：{{ currentRow.scrapNum }}</p>
+        <el-form label-width="80px">
+            <el-form-item label="审核结果">
+                <el-radio-group v-model="auditForm.status">
+                    <el-radio label="已审核">通过</el-radio>
+                    <el-radio label="已驳回">驳回</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="auditDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitAudit">确定</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog title="审批报废申请" :visible.sync="approveDialogVisible" width="400px">
+        <p>报废单号：{{ currentRow.scrapNo }}</p>
+        <p>药品：{{ currentRow.drugName }}</p>
+        <p>报废数量：{{ currentRow.scrapNum }}</p>
+        <el-form label-width="80px">
+            <el-form-item label="审批结果">
+                <el-radio-group v-model="approveForm.status">
+                    <el-radio label="已审批">通过</el-radio>
+                    <el-radio label="已驳回">驳回</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="approveDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitApprove">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false, tableData: [], inventoryList: [], pageNum: 1, pageSize: 10, total: 0,
+        searchForm: { status: '' },
+        applyDialogVisible: false, auditDialogVisible: false, approveDialogVisible: false,
+        applyForm: { inventoryId: '', drugId: '', scrapNum: 1, reason: '' },
+        currentRow: {}, auditForm: { status: '已审核' }, approveForm: { status: '已审批' }
+    },
+    mounted() {
+        this.loadData();
+        this.loadInventoryList();
+        // 处理URL参数（从效期提醒页面跳转过来）
+        const params = new URLSearchParams(location.search);
+        if (params.get('inventoryId')) {
+            this.applyForm.inventoryId = params.get('inventoryId');
+            this.applyForm.drugId = params.get('drugId');
+            this.applyForm.scrapNum = parseInt(params.get('stockNum')) || 1;
+            this.applyDialogVisible = true;
+        }
+    },
+    methods: {
+        loadData() {
+            this.loading = true;
+            axios.get('/scrap/list', { params: { status: this.searchForm.status, pageNum: this.pageNum, pageSize: this.pageSize }})
+                .then(res => { if (res.data.code === 200) { this.tableData = res.data.data.list; this.total = res.data.data.total; } this.loading = false; })
+                .catch(() => { this.loading = false; this.$message.error('加载失败'); });
+        },
+        loadInventoryList() { axios.get('/inventory/list', { params: { pageSize: 1000 } }).then(res => { if (res.data.code === 200) this.inventoryList = res.data.data.list; }); },
+        getStatusType(status) { const map = { '申请中': 'info', '已审核': 'warning', '已审批': 'primary', '已执行': 'success', '已驳回': 'danger' }; return map[status] || 'info'; },
+        search() { this.pageNum = 1; this.loadData(); },
+        reset() { this.searchForm = { status: '' }; this.pageNum = 1; this.loadData(); },
+        handleCurrentChange(val) { this.pageNum = val; this.loadData(); },
+        onInventoryChange(val) { const item = this.inventoryList.find(i => i.inventoryId === val); if (item) this.applyForm.drugId = item.drugId; },
+        showApplyDialog() { this.applyForm = { inventoryId: '', drugId: '', scrapNum: 1, reason: '' }; this.applyDialogVisible = true; },
+        submitApply() {
+            if (!this.applyForm.inventoryId || !this.applyForm.reason) {
+                this.$message.warning('请选择库存并填写报废原因');
+                return;
+            }
+            axios.post('/scrap/apply', this.applyForm)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('申请成功');
+                        this.applyDialogVisible = false;
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg || '申请失败');
+                    }
+                });
+        },
+        handleAudit(row) { this.currentRow = row; this.auditForm.status = '已审核'; this.auditDialogVisible = true; },
+        submitAudit() { axios.post('/scrap/audit?scrapId=' + this.currentRow.scrapId + '&status=' + this.auditForm.status + '&auditorId=admin').then(res => { if (res.data.code === 200) { this.$message.success('审核成功'); this.auditDialogVisible = false; this.loadData(); } else { this.$message.error(res.data.msg); } }); },
+        handleApprove(row) { this.currentRow = row; this.approveForm.status = '已审批'; this.approveDialogVisible = true; },
+        submitApprove() { axios.post('/scrap/approve?scrapId=' + this.currentRow.scrapId + '&status=' + this.approveForm.status + '&approverId=admin').then(res => { if (res.data.code === 200) { this.$message.success('审批成功'); this.approveDialogVisible = false; this.loadData(); } else { this.$message.error(res.data.msg); } }); },
+        handleExecute(row) { this.$confirm('确认执行报废？', '提示', { type: 'warning' }).then(() => { axios.post('/scrap/execute?scrapId=' + row.scrapId).then(res => { if (res.data.code === 200) { this.$message.success('执行成功'); this.loadData(); } else { this.$message.error(res.data.msg); } }); }); }
+    }
+});
+</script>
+</body>
+</html>
