@@ -449,11 +449,19 @@ INSERT INTO sys_user (user_id, username, password, real_name, role, phone, statu
 ('2', 'cashier01', '123456', '张收银', '收银员', '13800138010', 1),
 ('3', 'cashier02', '123456', '李收银', '收银员', '13800138011', 1);
 
+-- 插入用户角色关联（通过 sys_user_role 表管理）
+INSERT INTO sys_user_role (id, user_id, role_id) VALUES
+('ur001', '1', '1'),  -- admin -> 管理员
+('ur002', '2', '4'),  -- cashier01 -> 收银员
+('ur003', '3', '4');  -- cashier02 -> 收银员
+
 -- 插入默认角色
 INSERT INTO sys_role (role_id, role_name, description) VALUES
 ('1', '管理员', '拥有所有权限'),
 ('2', '店长', '门店管理权限'),
-('3', '库管', '仓库管理权限');
+('3', '库管', '仓库管理权限'),
+('4', '收银员', '销售开单权限'),
+('5', '药师', '药品管理权限');
 
 -- 插入默认权限
 INSERT INTO sys_permission (perm_id, perm_name, perm_code) VALUES
