@@ -285,6 +285,50 @@ CREATE TABLE sales_item (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块6】销售管理-销售明细表';
 
 -- ============================================
+-- 【新增】库存盘点表
+-- ============================================
+
+CREATE TABLE inventory_check (
+    check_id VARCHAR(32) NOT NULL COMMENT '盘点单ID' PRIMARY KEY,
+    drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
+    system_stock INT COMMENT '系统库存数量',
+    actual_stock INT COMMENT '实际库存数量',
+    diff_num INT COMMENT '差异数量',
+    diff_reason VARCHAR(500) COMMENT '差异原因',
+    check_date DATE COMMENT '盘点日期',
+    checker_id VARCHAR(32) COMMENT '盘点人ID',
+    auditor_id VARCHAR(32) COMMENT '审核人ID',
+    audit_status VARCHAR(20) DEFAULT '待审核' COMMENT '审核状态 待审核/已通过/已驳回',
+    adjust_status VARCHAR(20) DEFAULT '未调整' COMMENT '库存调整状态 未调整/已调整/无需调整',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    KEY idx_drug (drug_id),
+    KEY idx_checker (checker_id),
+    KEY idx_check_date (check_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块5】库存管理-库存盘点表';
+
+-- ============================================
+-- 【新增】销售退货表
+-- ============================================
+
+CREATE TABLE sales_return (
+    return_id VARCHAR(32) NOT NULL COMMENT '退货单ID' PRIMARY KEY,
+    original_order_id VARCHAR(32) NOT NULL COMMENT '原销售单号',
+    drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
+    batch_no VARCHAR(50) NOT NULL COMMENT '批号',
+    return_num INT NOT NULL COMMENT '退货数量',
+    return_reason VARCHAR(500) COMMENT '退货原因',
+    refund_amount DECIMAL(12,2) COMMENT '退款金额',
+    status VARCHAR(20) DEFAULT '申请中' COMMENT '状态 申请中/审核中/已完成/已驳回',
+    operator_id VARCHAR(32) COMMENT '操作人ID',
+    auditor_id VARCHAR(32) COMMENT '审核人ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    audit_time DATETIME COMMENT '审核时间',
+    KEY idx_original_order (original_order_id),
+    KEY idx_drug (drug_id),
+    KEY idx_operator (operator_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块6】销售管理-销售退货表';
+
+-- ============================================
 -- 【合并】报表统计表 (原有)
 -- ============================================
 
@@ -443,3 +487,40 @@ INSERT INTO drug_inventory (inventory_id, drug_id, batch_no, production_date, ex
 ('inv001', '1', 'B20240101', '2024-01-01', '2026-01-01', 500, 'a001000000000000000000000000001', 'A区-A01-01', '正常'),
 ('inv002', '2', 'C20240115', '2024-01-15', '2026-01-15', 300, 'a001000000000000000000000000001', 'A区-A01-02', '正常'),
 ('inv003', '3', 'D20240301', '2024-03-01', '2026-03-01', 1000, 'a001000000000000000000000000002', 'A区-A01-01', '正常');
+
+-- ============================================
+-- 【新增】测试数据 - 会员、销售订单、盘点、退货
+-- ============================================
+
+-- 插入测试会员
+INSERT INTO member_info (member_id, card_no, name, phone, points) VALUES
+('m001', 'VIP001', '张三', '13800138001', 150),
+('m002', 'VIP002', '李四', '13800138002', 280),
+('m003', 'VIP003', '王五', '13800138003', 50);
+
+-- 插入测试销售订单
+INSERT INTO sales_order (order_id, member_id, cashier_id, total_num, total_amount, discount, pay_amount, pay_type, order_time, status) VALUES
+('so001', 'm001', '1', 3, 36.00, 0.00, 36.00, '微信', '2024-05-08 10:30:00', '已完成'),
+('so002', 'm002', '1', 2, 19.00, 0.00, 19.00, '支付宝', '2024-05-08 14:20:00', '已完成'),
+('so003', NULL, '1', 1, 12.00, 0.00, 12.00, '现金', '2024-05-09 09:15:00', '已完成'),
+('so004', 'm001', '1', 5, 60.00, 5.00, 55.00, '医保', '2024-05-09 16:45:00', '已完成');
+
+-- 插入测试销售明细
+INSERT INTO sales_item (item_id, order_id, drug_id, batch_no, sale_num, sale_price) VALUES
+('si001', 'so001', '1', 'B20240101', 2, 12.00),
+('si002', 'so001', '2', 'C20240115', 1, 12.00),
+('si003', 'so002', '2', 'C20240115', 2, 9.50),
+('si004', 'so003', '1', 'B20240101', 1, 12.00),
+('si005', 'so004', '1', 'B20240101', 3, 12.00),
+('si006', 'so004', '3', 'D20240301', 2, 12.00);
+
+-- 插入测试盘点单
+INSERT INTO inventory_check (check_id, drug_id, system_stock, actual_stock, diff_num, diff_reason, check_date, checker_id, auditor_id, audit_status, adjust_status) VALUES
+('chk001', '1', 500, 498, -2, '可能损耗', '2024-05-08', '1', '1', '已通过', '已调整'),
+('chk002', '2', 300, 300, 0, NULL, '2024-05-08', '1', NULL, '待审核', '未调整'),
+('chk003', '3', 1000, 995, -5, '包装破损', '2024-05-09', '1', '1', '已通过', '已调整');
+
+-- 插入测试退货单
+INSERT INTO sales_return (return_id, original_order_id, drug_id, batch_no, return_num, return_reason, refund_amount, status, operator_id, auditor_id, create_time, audit_time) VALUES
+('sr001', 'so001', '1', 'B20240101', 1, '顾客不满意', 12.00, '已完成', '1', '1', '2024-05-08 15:00:00', '2024-05-08 16:00:00'),
+('sr002', 'so002', '2', 'C20240115', 1, '药品过期', 9.50, '申请中', '1', NULL, '2024-05-09 10:00:00', NULL);
