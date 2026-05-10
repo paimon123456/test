@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>药品管理系统 - 登录</title>
+    <script>
+        // 版本标识 - 用于检测浏览器是否缓存了旧版
+        console.log('📄 login.html 版本: v2.0 (带角色跳转逻辑)');
+        console.log('加载时间:', new Date().toLocaleString());
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
@@ -101,18 +106,43 @@
                 }
             },
             login(){
+                console.log('=== 开始登录 ===');
+                console.log('用户名:', this.form.username);
                 this.loading = true;
                 axios.post('/admin/login',null,{
                     params:{username:this.form.username,password:this.form.password}
                 }).then(res=>{
+                    console.log('=== 登录响应 ===');
+                    console.log('完整响应:', res);
+                    console.log('响应码:', res.data.code);
+                    console.log('响应数据:', res.data.data);
+                    
                     this.loading = false;
                     if(res.data.code===200) {
                         this.$message.success('登录成功！');
-                        setTimeout(() => location.href='index.html', 500);
+                        // 保存用户信息到 localStorage
+                        localStorage.setItem('userInfo', JSON.stringify(res.data.data));
+                        console.log('已保存到 localStorage:', localStorage.getItem('userInfo'));
+                                        
+                        // 根据用户角色跳转到不同页面
+                        const userRole = res.data.data.role;
+                        console.log('用户角色:', userRole);
+                        console.log('是否等于收银员:', userRole === '收银员');
+                        
+                        // 直接跳转，不使用 setTimeout
+                        if (userRole === '收银员') {
+                            console.log('跳转到 sales.html');
+                            location.href='sales.html';
+                        } else {
+                            console.log('跳转到 index.html');
+                            location.href='index.html';
+                        }
                     } else {
                         this.$message.error(res.data.msg);
                     }
-                }).catch(()=>{
+                }).catch((error)=>{
+                    console.error('=== 登录失败 ===');
+                    console.error('错误信息:', error);
                     this.loading = false;
                     this.$message.error('网络错误，请检查后端服务是否启动');
                 })

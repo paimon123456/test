@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.InventoryCheckMapper">
+
+    <!-- 查询盘点单列表 -->
+    <select id="selectCheckList" resultType="com.example.drug.entity.inventory.InventoryCheck">
+        SELECT 
+            ic.*,
+            d.drug_name,
+            u1.real_name as checker_name,
+            u2.real_name as auditor_name
+        FROM inventory_check ic
+        LEFT JOIN drug_info d ON ic.drug_id = d.drug_id
+        LEFT JOIN sys_user u1 ON ic.checker_id = u1.user_id
+        LEFT JOIN sys_user u2 ON ic.auditor_id = u2.user_id
+        <where>
+            <if test="drugName != null and drugName != ''">
+                AND d.drug_name LIKE CONCAT('%', #{drugName}, '%')
+            </if>
+            <if test="auditStatus != null and auditStatus != ''">
+                AND ic.audit_status = #{auditStatus}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND ic.check_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND ic.check_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY ic.create_time DESC
+    </select>
+
+    <!-- 根据盘点单ID查询详情 -->
+    <select id="selectCheckDetail" resultType="com.example.drug.entity.inventory.InventoryCheck">
+        SELECT 
+            ic.*,
+            d.drug_name,
+            u1.real_name as checker_name,
+            u2.real_name as auditor_name
+        FROM inventory_check ic
+        LEFT JOIN drug_info d ON ic.drug_id = d.drug_id
+        LEFT JOIN sys_user u1 ON ic.checker_id = u1.user_id
+        LEFT JOIN sys_user u2 ON ic.auditor_id = u2.user_id
+        WHERE ic.check_id = #{checkId}
+    </select>
+
+</mapper>

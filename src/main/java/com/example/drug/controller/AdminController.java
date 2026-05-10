@@ -1,8 +1,10 @@
 package com.example.drug.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.drug.entity.SysRole;
 import com.example.drug.entity.SysUser;
 import com.example.drug.entity.SysUserRole;
+import com.example.drug.mapper.SysRoleMapper;
 import com.example.drug.mapper.SysUserMapper;
 import com.example.drug.mapper.SysUserRoleMapper;
 import com.example.drug.util.Result;
@@ -21,6 +23,9 @@ public class AdminController {
 
     @Autowired
     private SysUserRoleMapper sysUserRoleMapper;
+    
+    @Autowired
+    private SysRoleMapper sysRoleMapper;
 
     @PostMapping("/login")
     public Result login(String username, String password, HttpSession session) {
@@ -34,10 +39,59 @@ public class AdminController {
             if (user.getStatus() != null && user.getStatus() == 0) {
                 return Result.fail("账号已被禁用");
             }
-            // 将用户ID和用户名存入session
+            
+            // 通过 sys_user_role 关联表查询用户角色
+            QueryWrapper<SysUserRole> userRoleWrapper = new QueryWrapper<>();
+            userRoleWrapper.eq("user_id", user.getUserId());
+            SysUserRole userRole = sysUserRoleMapper.selectOne(userRoleWrapper);
+            
+            System.out.println("========== 登录调试信息 ==========");
+            System.out.println("用户ID: " + user.getUserId());
+            System.out.println("用户名: " + user.getUsername());
+            System.out.println("sys_user表中的role字段: " + user.getRole());
+            System.out.println("sys_user_role查询结果: " + (userRole != null ? "找到" : "未找到"));
+            
+            String roleName = "";
+            if (userRole != null) {
+                System.out.println("userRole的roleId: " + userRole.getRoleId());
+                // 根据 role_id 查询角色名称
+                SysRole role = sysRoleMapper.selectById(userRole.getRoleId());
+                if (role != null) {
+                    roleName = role.getRoleName();
+                    System.out.println("从sys_role表查到的角色名称: " + roleName);
+                } else {
+                    System.out.println("警告: 未找到role_id=" + userRole.getRoleId() + "的角色");
+                    // 备选方案：使用 sys_user 表中的 role 字段
+                    roleName = user.getRole() != null ? user.getRole() : "";
+                }
+            } else {
+                // 如果没有分配角色，使用 sys_user 表中的 role 字段作为备选
+                roleName = user.getRole() != null ? user.getRole() : "";
+                System.out.println("使用sys_user表中的role字段: " + roleName);
+            }
+            
+            // 确保角色名称不为空，如果为空则使用 sys_user.role
+            if (roleName == null || roleName.trim().isEmpty()) {
+                roleName = user.getRole() != null ? user.getRole() : "未知角色";
+                System.out.println("角色名称为空，使用备选值: " + roleName);
+            }
+            System.out.println("最终返回的角色: " + roleName);
+            System.out.println("====================================");
+            
+            // 将用户ID、用户名和角色存入session
             session.setAttribute("userId", user.getUserId());
             session.setAttribute("userName", user.getUsername());
-            return Result.success(user);
+            session.setAttribute("userRole", roleName);
+            
+            // 返回用户信息和角色
+            java.util.Map<String, Object> userInfo = new java.util.HashMap<>();
+            userInfo.put("userId", user.getUserId());
+            userInfo.put("username", user.getUsername());
+            userInfo.put("realName", user.getRealName());
+            userInfo.put("role", roleName);
+            userInfo.put("phone", user.getPhone());
+            
+            return Result.success(userInfo);
         }
         return Result.fail("账号或密码错误");
     }

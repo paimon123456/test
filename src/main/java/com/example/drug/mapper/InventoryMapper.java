@@ -1,5 +1,6 @@
 package com.example.drug.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.drug.entity.inventory.Inventory;
 import org.apache.ibatis.annotations.*;
 
@@ -9,7 +10,7 @@ import java.util.List;
  * 库存Mapper - 注解方式
  */
 @Mapper
-public interface InventoryMapper {
+public interface InventoryMapper extends BaseMapper<Inventory> {
 
     // 分页条件查询库存（动态计算状态）
     @Select("<script>" +

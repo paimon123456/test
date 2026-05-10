@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>销售开单</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        .container { padding: 20px; }
+        .header { margin-bottom: 20px; }
+        .member-info { background: #f5f7fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+        .drug-search { margin-bottom: 20px; }
+        .cart-table { margin-bottom: 20px; }
+        .summary { background: #fff; padding: 20px; border: 1px solid #dcdfe6; border-radius: 4px; }
+        .total-row { font-size: 18px; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div id="app" class="container">
+    <div class="header">
+        <h2>销售开单</h2>
+    </div>
+
+    <!-- 会员信息 -->
+    <div class="member-info">
+        <el-row :gutter="20">
+            <el-col :span="8">
+                <el-input v-model="memberCardNo" placeholder="输入会员卡号" @blur="loadMemberInfo">
+                    <el-button slot="append" icon="el-icon-search" @click="loadMemberInfo"></el-button>
+                </el-input>
+            </el-col>
+            <el-col :span="16" v-if="currentMember">
+                <span>会员：{{ currentMember.name }}</span>
+                <span style="margin-left: 20px;">积分：{{ currentMember.points }}</span>
+                <span style="margin-left: 20px;">手机：{{ currentMember.phone }}</span>
+            </el-col>
+        </el-row>
+    </div>
+
+    <!-- 药品搜索 -->
+    <div class="drug-search">
+        <el-input v-model="drugSearchKeyword" placeholder="扫描或输入药品名称/编码" @keyup.enter.native="searchDrug" style="width: 400px; margin-right: 10px;">
+            <el-button slot="append" icon="el-icon-search" @click="searchDrug"></el-button>
+        </el-input>
+    </div>
+
+    <!-- 药品选择对话框 -->
+    <el-dialog title="选择药品" :visible.sync="drugDialogVisible" width="60%">
+        <el-table :data="drugList" @row-click="addDrugToCart" highlight-current-row>
+            <el-table-column prop="drugName" label="药品名称"></el-table-column>
+            <el-table-column prop="specification" label="规格" width="120"></el-table-column>
+            <el-table-column prop="manufacturer" label="生产厂家" width="150"></el-table-column>
+            <el-table-column prop="retailPrice" label="零售价" width="100"></el-table-column>
+            <el-table-column label="库存" width="100">
+                <template slot-scope="scope">{{ getDrugStock(scope.row.drugId) }}</template>
+            </el-table-column>
+        </el-table>
+    </el-dialog>
+
+    <!-- 购物车表格 -->
+    <el-table :data="cartItems" border class="cart-table">
+        <el-table-column prop="drugName" label="药品名称"></el-table-column>
+        <el-table-column prop="specification" label="规格" width="120"></el-table-column>
+        <el-table-column prop="batchNo" label="批号" width="120"></el-table-column>
+        <el-table-column label="数量" width="150">
+            <template slot-scope="scope">
+                <el-input-number v-model="scope.row.saleNum" :min="1" :max="scope.row.maxStock" size="small" @change="calculateTotal"></el-input-number>
+            </template>
+        </el-table-column>
+        <el-table-column label="单价" width="120">
+            <template slot-scope="scope">
+                <el-input-number v-model="scope.row.salePrice" :precision="2" :step="0.1" size="small" @change="calculateTotal"></el-input-number>
+            </template>
+        </el-table-column>
+        <el-table-column label="小计" width="120">
+            <template slot-scope="scope">¥{{ (scope.row.saleNum * scope.row.salePrice).toFixed(2) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="80">
+            <template slot-scope="scope">
+                <el-button type="danger" size="mini" @click="removeFromCart(scope.$index)">删除</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <!-- 结算信息 -->
+    <div class="summary">
+        <el-row :gutter="20">
+            <el-col :span="8">
+                <el-select v-model="payType" placeholder="支付方式" style="width: 100%;">
+                    <el-option label="现金" value="现金"></el-option>
+                    <el-option label="微信" value="微信"></el-option>
+                    <el-option label="支付宝" value="支付宝"></el-option>
+                    <el-option label="医保" value="医保"></el-option>
+                    <el-option label="银行卡" value="银行卡"></el-option>
+                </el-select>
+            </el-col>
+            <el-col :span="8">
+                <el-input v-model="discount" placeholder="优惠金额" type="number" @input="calculateTotal">
+                    <template slot="prepend">优惠</template>
+                </el-input>
+            </el-col>
+            <el-col :span="8">
+                <el-input v-model="pointsUsed" placeholder="使用积分" type="number" @input="calculateTotal">
+                    <template slot="prepend">积分抵扣</template>
+                </el-input>
+            </el-col>
+        </el-row>
+        <div class="total-row">
+            <el-row :gutter="20">
+                <el-col :span="8">应收金额：¥{{ totalAmount.toFixed(2) }}</el-col>
+                <el-col :span="8">实收金额：¥{{ payAmount.toFixed(2) }}</el-col>
+                <el-col :span="8">
+                    <el-button type="primary" size="large" @click="submitOrder" :disabled="cartItems.length === 0">提交订单</el-button>
+                    <el-button size="large" @click="clearCart">清空</el-button>
+                </el-col>
+            </el-row>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        memberCardNo: '',
+        currentMember: null,
+        drugSearchKeyword: '',
+        drugDialogVisible: false,
+        drugList: [],
+        cartItems: [],
+        payType: '微信',
+        discount: 0,
+        pointsUsed: 0,
+        totalAmount: 0,
+        payAmount: 0,
+        cashierId: '', // 从登录用户获取
+        cashierName: ''
+    },
+    mounted() {
+        // 从 localStorage 获取登录用户信息
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            const user = JSON.parse(userInfo);
+            this.cashierId = user.userId;
+            this.cashierName = user.realName || user.username;
+        } else {
+            // 如果没有登录，跳转到登录页
+            this.$message.warning('请先登录');
+            setTimeout(() => location.href = 'login.html', 1000);
+        }
+    },
+    methods: {
+        loadMemberInfo() {
+            if (!this.memberCardNo) return;
+            axios.get(`/sales/member/card/${this.memberCardNo}`)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.currentMember = res.data.data;
+                        this.$message.success('会员加载成功');
+                    } else {
+                        this.$message.warning('会员不存在');
+                        this.currentMember = null;
+                    }
+                });
+        },
+        searchDrug() {
+            if (!this.drugSearchKeyword) return;
+            axios.get('/drug/list').then(res => {
+                if (res.data.code === 200) {
+                    this.drugList = res.data.data.filter(drug => 
+                        drug.drugName.includes(this.drugSearchKeyword) || drug.drugId.includes(this.drugSearchKeyword)
+                    );
+                    this.drugDialogVisible = true;
+                }
+            });
+        },
+        getDrugStock(drugId) {
+            // 简化：实际应该查询库存表
+            return '充足';
+        },
+        addDrugToCart(drug) {
+            // 检查是否已在购物车
+            const existing = this.cartItems.find(item => item.drugId === drug.drugId);
+            if (existing) {
+                existing.saleNum++;
+            } else {
+                this.cartItems.push({
+                    drugId: drug.drugId,
+                    drugName: drug.drugName,
+                    specification: drug.specification,
+                    batchNo: '', // 需要从库存获取
+                    saleNum: 1,
+                    salePrice: drug.retailPrice,
+                    maxStock: 999
+                });
+            }
+            this.calculateTotal();
+            this.drugDialogVisible = false;
+            this.drugSearchKeyword = '';
+        },
+        removeFromCart(index) {
+            this.cartItems.splice(index, 1);
+            this.calculateTotal();
+        },
+        calculateTotal() {
+            this.totalAmount = this.cartItems.reduce((sum, item) => sum + item.saleNum * item.salePrice, 0);
+            this.payAmount = this.totalAmount - (this.discount || 0);
+        },
+        submitOrder() {
+            if (this.cartItems.length === 0) {
+                this.$message.warning('购物车为空');
+                return;
+            }
+
+            const orderData = {
+                memberId: this.currentMember ? this.currentMember.memberId : null,
+                cashierId: this.cashierId,
+                payType: this.payType,
+                discount: this.discount || 0,
+                pointsUsed: this.pointsUsed || 0,
+                items: this.cartItems.map(item => ({
+                    drugId: item.drugId,
+                    saleNum: item.saleNum,
+                    salePrice: item.salePrice
+                }))
+            };
+
+            axios.post('/sales/order/create', orderData)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('订单提交成功！订单号：' + res.data.data.orderId);
+                        this.clearCart();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                })
+                .catch(err => {
+                    this.$message.error('提交失败：' + err.message);
+                });
+        },
+        clearCart() {
+            this.cartItems = [];
+            this.totalAmount = 0;
+            this.payAmount = 0;
+            this.discount = 0;
+            this.pointsUsed = 0;
+        }
+    }
+});
+</script>
+</body>
+</html>

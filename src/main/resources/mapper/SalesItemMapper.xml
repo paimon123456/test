@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.SalesItemMapper">
+
+    <!-- 根据订单ID查询明细列表 -->
+    <select id="selectItemsByOrderId" resultType="com.example.drug.entity.sales.SalesItem">
+        SELECT 
+            si.*,
+            d.drug_name,
+            d.specification,
+            (si.sale_num * si.sale_price) as subtotal
+        FROM sales_item si
+        LEFT JOIN drug_info d ON si.drug_id = d.drug_id
+        WHERE si.order_id = #{orderId}
+        ORDER BY si.item_id
+    </select>
+
+    <!-- 查询销售明细列表 -->
+    <select id="selectItemList" resultType="com.example.drug.entity.sales.SalesItem">
+        SELECT 
+            si.*,
+            d.drug_name,
+            d.specification,
+            (si.sale_num * si.sale_price) as subtotal
+        FROM sales_item si
+        LEFT JOIN drug_info d ON si.drug_id = d.drug_id
+        <where>
+            <if test="orderId != null and orderId != ''">
+                AND si.order_id = #{orderId}
+            </if>
+            <if test="drugName != null and drugName != ''">
+                AND d.drug_name LIKE CONCAT('%', #{drugName}, '%')
+            </if>
+        </where>
+        ORDER BY si.item_id
+    </select>
+
+</mapper>

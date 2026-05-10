@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.MemberInfoMapper">
+
+    <!-- 根据会员卡号查询会员 -->
+    <select id="selectByCardNo" resultType="com.example.drug.entity.sales.MemberInfo">
+        SELECT * FROM member_info WHERE card_no = #{cardNo}
+    </select>
+
+    <!-- 查询会员列表 -->
+    <select id="selectMemberList" resultType="com.example.drug.entity.sales.MemberInfo">
+        SELECT * FROM member_info
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
+                AND phone LIKE CONCAT('%', #{phone}, '%')
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

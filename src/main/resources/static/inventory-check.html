@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>库存盘点</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>.container { padding: 20px; } .search-bar { margin-bottom: 20px; }</style>
+</head>
+<body>
+<div id="app" class="container">
+    <h2>库存盘点</h2>
+    
+    <!-- 操作栏 -->
+    <div style="margin-bottom: 20px;">
+        <el-button type="primary" @click="showCreateDialog">创建盘点单</el-button>
+    </div>
+
+    <!-- 盘点单列表 -->
+    <el-table :data="tableData" border v-loading="loading">
+        <el-table-column prop="checkId" label="盘点单号" width="180"></el-table-column>
+        <el-table-column prop="drugName" label="药品名称"></el-table-column>
+        <el-table-column prop="systemStock" label="系统库存" width="100"></el-table-column>
+        <el-table-column prop="actualStock" label="实际库存" width="100">
+            <template slot-scope="scope">
+                <span v-if="scope.row.actualStock">{{ scope.row.actualStock }}</span>
+                <el-button v-else size="mini" @click="inputStock(scope.row)">录入</el-button>
+            </template>
+        </el-table-column>
+        <el-table-column prop="diffNum" label="差异" width="100">
+            <template slot-scope="scope">
+                <span v-if="scope.row.diffNum" :style="{color: scope.row.diffNum < 0 ? 'red' : 'green'}">
+                    {{ scope.row.diffNum > 0 ? '+' : '' }}{{ scope.row.diffNum }}
+                </span>
+            </template>
+        </el-table-column>
+        <el-table-column prop="checkDate" label="盘点日期" width="120"></el-table-column>
+        <el-table-column prop="checkerName" label="盘点人" width="100"></el-table-column>
+        <el-table-column prop="auditStatus" label="审核状态" width="100">
+            <template slot-scope="scope">
+                <el-tag :type="getAuditStatusType(scope.row.auditStatus)">{{ scope.row.auditStatus }}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150">
+            <template slot-scope="scope">
+                <el-button v-if="scope.row.auditStatus === '待审核' && scope.row.actualStock" 
+                           size="mini" type="success" @click="auditCheck(scope.row, true)">通过</el-button>
+                <el-button v-if="scope.row.auditStatus === '待审核'" 
+                           size="mini" type="danger" @click="auditCheck(scope.row, false)">驳回</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <!-- 创建盘点单对话框 -->
+    <el-dialog title="创建盘点单" :visible.sync="createDialogVisible" width="50%">
+        <el-form :model="createForm" label-width="100px">
+            <el-form-item label="盘点类型">
+                <el-radio-group v-model="createForm.checkType">
+                    <el-radio label="全盘">全盘</el-radio>
+                    <el-radio label="抽盘">抽盘</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="仓库" v-if="createForm.checkType === '全盘'">
+                <el-select v-model="createForm.warehouseId" placeholder="选择仓库">
+                    <el-option label="主仓库" value="a001000000000000000000000000001"></el-option>
+                    <el-option label="分仓库A" value="a001000000000000000000000000002"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="createDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="createCheck">创建</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 录入实际库存对话框 -->
+    <el-dialog title="录入实际库存" :visible.sync="inputDialogVisible" width="40%">
+        <el-form :model="inputForm" label-width="100px">
+            <el-form-item label="系统库存">
+                <el-input :value="currentCheck.systemStock" disabled></el-input>
+            </el-form-item>
+            <el-form-item label="实际库存">
+                <el-input-number v-model="inputForm.actualStock" :min="0"></el-input-number>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="inputDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitActualStock">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+</script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false,
+        tableData: [],
+        createDialogVisible: false,
+        inputDialogVisible: false,
+        createForm: { checkType: '全盘', warehouseId: '' },
+        inputForm: { actualStock: 0 },
+        currentCheck: null,
+        checkerId: '1'
+    },
+    mounted() {
+        this.loadData();
+    },
+    methods: {
+        loadData() {
+            this.loading = true;
+            axios.get('/inventory/check/list', { params: { pageNum: 1, pageSize: 100 }})
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.tableData = res.data.data.records;
+                    }
+                    this.loading = false;
+                })
+                .catch(() => { this.loading = false; });
+        },
+        showCreateDialog() {
+            this.createDialogVisible = true;
+        },
+        createCheck() {
+            const data = {
+                checkType: this.createForm.checkType,
+                checkerId: this.checkerId,
+                warehouseId: this.createForm.warehouseId
+            };
+            
+            axios.post('/inventory/check/create', data)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.createDialogVisible = false;
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+        },
+        inputStock(row) {
+            this.currentCheck = row;
+            this.inputForm.actualStock = row.systemStock;
+            this.inputDialogVisible = true;
+        },
+        submitActualStock() {
+            axios.post('/inventory/check/input-stock', null, {
+                params: {
+                    checkId: this.currentCheck.checkId,
+                    actualStock: this.inputForm.actualStock
+                }
+            }).then(res => {
+                if (res.data.code === 200) {
+                    this.$message.success(res.data.msg);
+                    this.inputDialogVisible = false;
+                    this.loadData();
+                } else {
+                    this.$message.error(res.data.msg);
+                }
+            });
+        },
+        auditCheck(row, approved) {
+            axios.post('/inventory/check/audit', null, {
+                params: {
+                    checkId: row.checkId,
+                    auditorId: '1',
+                    approved: approved
+                }
+            }).then(res => {
+                if (res.data.code === 200) {
+                    this.$message.success(res.data.msg);
+                    this.loadData();
+                } else {
+                    this.$message.error(res.data.msg);
+                }
+            });
+        },
+        getAuditStatusType(status) {
+            const map = { '待审核': 'warning', '已通过': 'success', '已驳回': 'danger' };
+            return map[status] || '';
+        }
+    }
+});
+</script>
+</body>
+</html>
