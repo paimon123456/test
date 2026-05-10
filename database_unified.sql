@@ -445,7 +445,9 @@ CREATE TABLE sys_log (
 
 -- 插入默认管理员 (密码: admin123)
 INSERT INTO sys_user (user_id, username, password, real_name, role, phone, status) VALUES
-('1', 'admin', 'admin123', '系统管理员', '管理员', '13800138000', 1);
+('1', 'admin', 'admin123', '系统管理员', '管理员', '13800138000', 1),
+('2', 'cashier01', '123456', '张收银', '收银员', '13800138010', 1),
+('3', 'cashier02', '123456', '李收银', '收银员', '13800138011', 1);
 
 -- 插入默认角色
 INSERT INTO sys_role (role_id, role_name, description) VALUES
