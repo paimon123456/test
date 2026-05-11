@@ -1,17 +1,22 @@
 package com.example.drug.entity.sales;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 销售退货单实体
+ * 销售退货单实体 (对应 sales_return 表)
  */
 @Data
+@TableName("sales_return")
 public class SalesReturn implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // 退货单号
+    @TableId
     private String returnId;
     // 原销售单号
     private String originalOrderId;
@@ -36,11 +41,14 @@ public class SalesReturn implements Serializable {
     // 审核时间
     private Date auditTime;
     
-    // ========== 扩展字段（关联查询）==========
+    // ========== 扩展字段（关联查询）- 不存在于数据库表中 ==========
     // 药品名称
+    @TableField(exist = false)
     private String drugName;
     // 操作人姓名
+    @TableField(exist = false)
     private String operatorName;
     // 审核人姓名
+    @TableField(exist = false)
     private String auditorName;
 }

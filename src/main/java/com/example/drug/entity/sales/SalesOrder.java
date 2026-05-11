@@ -1,5 +1,8 @@
 package com.example.drug.entity.sales;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -9,10 +12,12 @@ import java.util.Date;
  * 销售订单实体 (对应 sales_order 表)
  */
 @Data
+@TableName("sales_order")
 public class SalesOrder implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // 销售单号
+    @TableId
     private String orderId;
     // 会员ID
     private String memberId;
@@ -33,11 +38,14 @@ public class SalesOrder implements Serializable {
     // 状态：已完成/已退货/已取消
     private String status;
     
-    // ========== 扩展字段（关联查询）==========
+    // ========== 扩展字段（关联查询）- 不存在于数据库表中 ==========
     // 收银员姓名
+    @TableField(exist = false)
     private String cashierName;
     // 会员姓名
+    @TableField(exist = false)
     private String memberName;
     // 会员卡号
+    @TableField(exist = false)
     private String cardNo;
 }

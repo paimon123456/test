@@ -7,7 +7,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@TableName("operation_log")
+@TableName("sys_log")
 public class OperationLog {
     @TableId(type = IdType.AUTO)
     private Integer logId;

@@ -1,12 +1,14 @@
 package com.example.drug.entity.warehouse;
 
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.io.Serializable;
 
 /**
- * 【模块7】仓库管理-仓库档案实体
+ * 【模块7】仓库管理-仓库档案实体 (对应 warehouse 表)
  */
 @Data
+@TableName("warehouse")
 public class Warehouse implements Serializable {
     private static final long serialVersionUID = 1L;
 
