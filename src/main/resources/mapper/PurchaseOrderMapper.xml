@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.PurchaseOrderMapper">
+
+    <!-- 查询采购订单列表 -->
+    <select id="selectPurchaseOrderList" resultType="com.example.drug.entity.purchase.PurchaseOrder">
+        SELECT 
+            po.*,
+            s.supplier_name,
+            s.supplier_code,
+            w.warehouse_name,
+            u1.real_name as operator_name,
+            u2.real_name as auditor_name
+        FROM purchase_order po
+        LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+        LEFT JOIN warehouse w ON po.warehouse_id = w.warehouse_id
+        LEFT JOIN sys_user u1 ON po.operator_id = u1.user_id
+        LEFT JOIN sys_user u2 ON po.auditor_id = u2.user_id
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND po.order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="supplierId != null and supplierId != ''">
+                AND po.supplier_id = #{supplierId}
+            </if>
+            <if test="status != null and status != ''">
+                AND po.status = #{status}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND po.create_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND po.create_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY po.create_time DESC
+    </select>
+
+    <!-- 查询采购订单详情 -->
+    <select id="selectPurchaseOrderDetail" resultType="com.example.drug.entity.purchase.PurchaseOrder">
+        SELECT 
+            po.*,
+            s.supplier_name,
+            s.supplier_code,
+            w.warehouse_name,
+            u1.real_name as operator_name,
+            u2.real_name as auditor_name
+        FROM purchase_order po
+        LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+        LEFT JOIN warehouse w ON po.warehouse_id = w.warehouse_id
+        LEFT JOIN sys_user u1 ON po.operator_id = u1.user_id
+        LEFT JOIN sys_user u2 ON po.auditor_id = u2.user_id
+        WHERE po.order_id = #{orderId}
+    </select>
+
+    <!-- 查询采购订单明细 -->
+    <select id="selectPurchaseItems" resultType="com.example.drug.entity.purchase.PurchaseItem">
+        SELECT 
+            pi.*,
+            d.drug_name,
+            d.specification,
+            d.unit
+        FROM purchase_item pi
+        LEFT JOIN drug_info d ON pi.drug_id = d.drug_id
+        WHERE pi.order_id = #{orderId}
+        ORDER BY pi.item_id
+    </select>
+
+    <!-- 统计待审核采购单数量 -->
+    <select id="countPendingOrders" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM purchase_order WHERE status = '待审核'
+    </select>
+
+    <!-- 统计采购总金额 -->
+    <select id="sumPurchaseAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) FROM purchase_order
+        WHERE 1=1
+        <if test="startDate != null and startDate != ''">
+            AND create_time &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND create_time &lt;= #{endDate}
+        </if>
+    </select>
+
+</mapper>

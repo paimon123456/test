@@ -86,6 +86,8 @@
         .icon-role { color: #FF9800; }
         .icon-report { color: #E040FB; }
         .icon-price { color: #00BCD4; }
+        .icon-supplier { color: #9c27b0; }
+        .icon-purchase { color: #ff5722; }
     </style>
 </head>
 <body>
@@ -157,6 +159,16 @@
                 <div class="module-icon icon-price"><i class="el-icon-price-tag"></i></div>
                 <div class="module-title">价格管理</div>
                 <div class="module-desc">采购价、零售价、会员价、批量调价</div>
+            </div>
+            <div class="module-card" @click="goTo('supplier.html')">
+                <div class="module-icon icon-supplier"><i class="el-icon-s-shop"></i></div>
+                <div class="module-title">供应商管理</div>
+                <div class="module-desc">供应商档案、合作记录、对账付款</div>
+            </div>
+            <div class="module-card" @click="goTo('purchase.html')">
+                <div class="module-icon icon-purchase"><i class="el-icon-shopping-cart-2"></i></div>
+                <div class="module-title">采购管理</div>
+                <div class="module-desc">采购订单、审核流程、统计报表</div>
             </div>
         </div>
     </div>

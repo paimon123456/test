@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.SupplierMapper">
+
+    <!-- 查询供应商列表 -->
+    <select id="selectSupplierList" resultType="com.example.drug.entity.supplier.Supplier">
+        SELECT 
+            s.*,
+            DATEDIFF(s.pharma_expiry_date, CURDATE()) as days_to_expire,
+            CASE 
+                WHEN DATEDIFF(s.pharma_expiry_date, CURDATE()) &lt;= 30 THEN 1
+                ELSE 0
+            END as near_expiry
+        FROM supplier s
+        <where>
+            <if test="supplierName != null and supplierName != ''">
+                AND s.supplier_name LIKE CONCAT('%', #{supplierName}, '%')
+            </if>
+            <if test="qualificationStatus != null and qualificationStatus != ''">
+                AND s.qualification_status = #{qualificationStatus}
+            </if>
+            <if test="cooperationStatus != null and cooperationStatus != ''">
+                AND s.cooperation_status = #{cooperationStatus}
+            </if>
+            <if test="status != null">
+                AND s.status = #{status}
+            </if>
+        </where>
+        ORDER BY s.create_time DESC
+    </select>
+
+    <!-- 查询供应商详情 -->
+    <select id="selectSupplierDetail" resultType="com.example.drug.entity.supplier.Supplier">
+        SELECT 
+            s.*,
+            DATEDIFF(s.pharma_expiry_date, CURDATE()) as days_to_expire,
+            CASE 
+                WHEN DATEDIFF(s.pharma_expiry_date, CURDATE()) &lt;= 30 THEN 1
+                ELSE 0
+            END as near_expiry
+        FROM supplier s
+        WHERE s.supplier_id = #{supplierId}
+    </select>
+
+    <!-- 查询资质即将过期的供应商 -->
+    <select id="selectExpiringSuppliers" resultType="com.example.drug.entity.supplier.Supplier">
+        SELECT 
+            s.*,
+            DATEDIFF(s.pharma_expiry_date, CURDATE()) as days_to_expire,
+            CASE 
+                WHEN DATEDIFF(s.pharma_expiry_date, CURDATE()) &lt;= 30 THEN 1
+                ELSE 0
+            END as near_expiry
+        FROM supplier s
+        WHERE s.status = 1
+        AND (
+            DATEDIFF(s.pharma_expiry_date, CURDATE()) &lt;= #{days}
+            OR DATEDIFF(s.gsp_expiry_date, CURDATE()) &lt;= #{days}
+            OR DATEDIFF(s.license_expiry_date, CURDATE()) &lt;= #{days}
+        )
+        ORDER BY DATEDIFF(s.pharma_expiry_date, CURDATE()) ASC
+    </select>
+
+    <!-- 根据供应商编码查询 -->
+    <select id="selectByCode" resultType="com.example.drug.entity.supplier.Supplier">
+        SELECT * FROM supplier WHERE supplier_code = #{supplierCode}
+    </select>
+
+</mapper>

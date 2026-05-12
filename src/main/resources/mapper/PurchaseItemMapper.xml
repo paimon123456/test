@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.PurchaseItemMapper">
+
+    <!-- 根据订单ID删除所有明细 -->
+    <delete id="deleteByOrderId">
+        DELETE FROM purchase_item WHERE order_id = #{orderId}
+    </delete>
+
+    <!-- 批量插入明细 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO purchase_item (item_id, order_id, drug_id, purchase_num, purchase_price, subtotal, 
+            received_num, pending_num, status)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.itemId}, #{item.orderId}, #{item.drugId}, #{item.purchaseNum}, #{item.purchasePrice}, 
+             #{item.subtotal}, #{item.receivedNum}, #{item.pendingNum}, #{item.status})
+        </foreach>
+    </insert>
+
+</mapper>

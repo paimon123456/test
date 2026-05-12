@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.InventoryReserveMapper">
+
+    <!-- 根据单号查询预占记录 -->
+    <select id="selectByOrderId" resultType="com.example.drug.entity.purchase.InventoryReserve">
+        SELECT 
+            ir.*,
+            d.drug_name,
+            CASE ir.order_type
+                WHEN '采购' THEN '采购预占'
+                WHEN '销售' THEN '销售预占'
+                WHEN '调拨' THEN '调拨预占'
+                ELSE ir.order_type
+            END as order_type_desc
+        FROM inventory_reserve ir
+        LEFT JOIN drug_info d ON ir.drug_id = d.drug_id
+        WHERE ir.order_id = #{orderId}
+        ORDER BY ir.create_time DESC
+    </select>
+
+    <!-- 根据单号类型查询 -->
+    <select id="selectByOrderType" resultType="com.example.drug.entity.purchase.InventoryReserve">
+        SELECT 
+            ir.*,
+            d.drug_name,
+            CASE ir.order_type
+                WHEN '采购' THEN '采购预占'
+                WHEN '销售' THEN '销售预占'
+                WHEN '调拨' THEN '调拨预占'
+                ELSE ir.order_type
+            END as order_type_desc
+        FROM inventory_reserve ir
+        LEFT JOIN drug_info d ON ir.drug_id = d.drug_id
+        WHERE ir.order_type = #{orderType}
+        AND ir.status = '预占中'
+        ORDER BY ir.create_time DESC
+    </select>
+
+    <!-- 释放过期预占 -->
+    <update id="releaseExpiredReserves">
+        UPDATE inventory_reserve 
+        SET status = '已释放'
+        WHERE status = '预占中' 
+        AND expire_time &lt; NOW()
+    </update>
+
+</mapper>
