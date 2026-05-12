@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.ReportMapper">
+
+    <select id="getDailyReport" resultType="com.example.drug.entity.report.DailyReport">
+        SELECT
+            d.drug_id AS drugId,
+            d.drug_name AS drugName,
+            d.specification,
+            d.unit,
+            COALESCE(opening.opening_stock, 0) AS openingStock,
+            COALESCE(purchase.purchase_in, 0) AS purchaseIn,
+            COALESCE(sale.sale_out, 0) AS saleOut,
+            COALESCE(retIn.return_in, 0) AS returnIn,
+            COALESCE(retOut.return_out, 0) AS returnOut,
+            (COALESCE(opening.opening_stock, 0) + COALESCE(purchase.purchase_in, 0) - COALESCE(sale.sale_out, 0) + COALESCE(retIn.return_in, 0) - COALESCE(retOut.return_out, 0)) AS closingStock,
+            COALESCE(purchase.purchase_amount, 0) AS purchaseAmount,
+            COALESCE(sale.sale_amount, 0) AS saleAmount,
+            (COALESCE(sale.sale_amount, 0) - COALESCE(purchase.purchase_amount, 0)) AS profit,
+            #{startDate} AS reportDate
+        FROM drug_info d
+        LEFT JOIN (
+            SELECT drug_id, SUM(stock_num) AS opening_stock
+            FROM drug_inventory
+            WHERE status = '正常'
+            GROUP BY drug_id
+        ) opening ON d.drug_id = opening.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(pi.purchase_num) AS purchase_in,
+                   SUM(pi.purchase_num * pi.purchase_price) AS purchase_amount
+            FROM purchase_item pi
+            INNER JOIN purchase_in pi2 ON pi.order_id = pi2.order_id
+            WHERE DATE(pi2.in_time) BETWEEN #{startDate} AND #{endDate}
+            <if test="drugId != null and drugId != ''">
+                AND pi.drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) purchase ON d.drug_id = purchase.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(si.sale_num) AS sale_out,
+                   SUM(si.sale_num * si.sale_price) AS sale_amount
+            FROM sales_item si
+            INNER JOIN sales_order so ON si.order_id = so.order_id
+            WHERE DATE(so.order_time) BETWEEN #{startDate} AND #{endDate}
+            AND so.status = '已完成'
+            <if test="drugId != null and drugId != ''">
+                AND si.drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) sale ON d.drug_id = sale.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(return_num) AS return_in
+            FROM sales_return
+            WHERE DATE(create_time) BETWEEN #{startDate} AND #{endDate}
+            AND status = '已完成'
+            <if test="drugId != null and drugId != ''">
+                AND drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) retIn ON d.drug_id = retIn.drug_id
+        LEFT JOIN (
+            SELECT drug_id, SUM(scrap_num) AS return_out
+            FROM drug_scrap
+            WHERE DATE(create_time) BETWEEN #{startDate} AND #{endDate}
+            <if test="drugId != null and drugId != ''">
+                AND drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) retOut ON d.drug_id = retOut.drug_id
+        WHERE d.status = 1
+        <if test="drugId != null and drugId != ''">
+            AND d.drug_id = #{drugId}
+        </if>
+        HAVING (openingStock + purchaseIn + saleOut + returnIn + returnOut) > 0
+        ORDER BY d.drug_name
+    </select>
+
+    <select id="getMonthlyReport" resultType="com.example.drug.entity.report.DailyReport">
+        SELECT
+            d.drug_id AS drugId,
+            d.drug_name AS drugName,
+            d.specification,
+            d.unit,
+            COALESCE(opening.opening_stock, 0) AS openingStock,
+            COALESCE(purchase.purchase_in, 0) AS purchaseIn,
+            COALESCE(sale.sale_out, 0) AS saleOut,
+            COALESCE(retIn.return_in, 0) AS returnIn,
+            COALESCE(retOut.return_out, 0) AS returnOut,
+            (COALESCE(opening.opening_stock, 0) + COALESCE(purchase.purchase_in, 0) - COALESCE(sale.sale_out, 0) + COALESCE(retIn.return_in, 0) - COALESCE(retOut.return_out, 0)) AS closingStock,
+            COALESCE(purchase.purchase_amount, 0) AS purchaseAmount,
+            COALESCE(sale.sale_amount, 0) AS saleAmount,
+            (COALESCE(sale.sale_amount, 0) - COALESCE(purchase.purchase_amount, 0)) AS profit,
+            #{startMonth} AS reportDate
+        FROM drug_info d
+        LEFT JOIN (
+            SELECT drug_id, SUM(stock_num) AS opening_stock
+            FROM drug_inventory
+            WHERE status = '正常'
+            GROUP BY drug_id
+        ) opening ON d.drug_id = opening.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(pi.purchase_num) AS purchase_in,
+                   SUM(pi.purchase_num * pi.purchase_price) AS purchase_amount
+            FROM purchase_item pi
+            INNER JOIN purchase_in pi2 ON pi.order_id = pi2.order_id
+            WHERE DATE_FORMAT(pi2.in_time, '%Y-%m') BETWEEN #{startMonth} AND #{endMonth}
+            <if test="drugId != null and drugId != ''">
+                AND pi.drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) purchase ON d.drug_id = purchase.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(si.sale_num) AS sale_out,
+                   SUM(si.sale_num * si.sale_price) AS sale_amount
+            FROM sales_item si
+            INNER JOIN sales_order so ON si.order_id = so.order_id
+            WHERE DATE_FORMAT(so.order_time, '%Y-%m') BETWEEN #{startMonth} AND #{endMonth}
+            AND so.status = '已完成'
+            <if test="drugId != null and drugId != ''">
+                AND si.drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) sale ON d.drug_id = sale.drug_id
+        LEFT JOIN (
+            SELECT drug_id,
+                   SUM(return_num) AS return_in
+            FROM sales_return
+            WHERE DATE_FORMAT(create_time, '%Y-%m') BETWEEN #{startMonth} AND #{endMonth}
+            AND status = '已完成'
+            <if test="drugId != null and drugId != ''">
+                AND drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) retIn ON d.drug_id = retIn.drug_id
+        LEFT JOIN (
+            SELECT drug_id, SUM(scrap_num) AS return_out
+            FROM drug_scrap
+            WHERE DATE_FORMAT(create_time, '%Y-%m') BETWEEN #{startMonth} AND #{endMonth}
+            <if test="drugId != null and drugId != ''">
+                AND drug_id = #{drugId}
+            </if>
+            GROUP BY drug_id
+        ) retOut ON d.drug_id = retOut.drug_id
+        WHERE d.status = 1
+        <if test="drugId != null and drugId != ''">
+            AND d.drug_id = #{drugId}
+        </if>
+        HAVING (openingStock + purchaseIn + saleOut + returnIn + returnOut) > 0
+        ORDER BY d.drug_name
+    </select>
+
+    <select id="getSalesRanking" resultType="com.example.drug.entity.report.SalesRanking">
+        SELECT
+            d.drug_id AS drugId,
+            d.drug_name AS drugName,
+            d.specification,
+            d.unit,
+            SUM(si.sale_num) AS totalSalesNum,
+            SUM(si.sale_num * si.sale_price) AS totalSalesAmount
+        FROM sales_item si
+        INNER JOIN sales_order so ON si.order_id = so.order_id
+        INNER JOIN drug_info d ON si.drug_id = d.drug_id
+        WHERE so.status = '已完成'
+        AND DATE(so.order_time) BETWEEN #{startDate} AND #{endDate}
+        GROUP BY d.drug_id, d.drug_name, d.specification, d.unit
+        ORDER BY totalSalesAmount DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="getInventoryTurnover" resultType="com.example.drug.entity.report.InventoryTurnover">
+        SELECT
+            d.drug_id AS drugId,
+            d.drug_name AS drugName,
+            d.specification,
+            ROUND(AVG(di.stock_num)) AS averageStock,
+            COALESCE(sale.total_sales, 0) AS totalSales,
+            COALESCE(pur.total_purchase, 0) AS totalPurchase,
+            CASE
+                WHEN AVG(di.stock_num) > 0
+                THEN ROUND((COALESCE(sale.total_sales, 0) / AVG(di.stock_num)) * 100, 2)
+                ELSE 0
+            END AS turnoverRate,
+            CASE
+                WHEN COALESCE(sale.total_sales, 0) > 0
+                THEN CONCAT(ROUND((DATEDIFF(#{endDate}, #{startDate}) / COALESCE(sale.total_sales, 0)) * AVG(di.stock_num), 0), '天')
+                ELSE 'N/A'
+            END AS turnoverDays
+        FROM drug_info d
+        LEFT JOIN drug_inventory di ON d.drug_id = di.drug_id AND di.status = '正常'
+        LEFT JOIN (
+            SELECT drug_id, SUM(sale_num) AS total_sales
+            FROM sales_item si
+            INNER JOIN sales_order so ON si.order_id = so.order_id
+            WHERE so.status = '已完成'
+            AND DATE(so.order_time) BETWEEN #{startDate} AND #{endDate}
+            GROUP BY drug_id
+        ) sale ON d.drug_id = sale.drug_id
+        LEFT JOIN (
+            SELECT drug_id, SUM(purchase_num) AS total_purchase
+            FROM purchase_item pi
+            INNER JOIN purchase_in pi2 ON pi.order_id = pi2.order_id
+            WHERE DATE(pi2.in_time) BETWEEN #{startDate} AND #{endDate}
+            GROUP BY drug_id
+        ) pur ON d.drug_id = pur.drug_id
+        WHERE d.status = 1
+        <if test="drugId != null and drugId != ''">
+            AND d.drug_id = #{drugId}
+        </if>
+        GROUP BY d.drug_id, d.drug_name, d.specification
+        HAVING averageStock > 0 OR totalSales > 0
+        ORDER BY turnoverRate DESC
+    </select>
+
+    <select id="getTotalSalesAmount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM sales_order
+        WHERE status = '已完成'
+        AND DATE(order_time) BETWEEN #{startDate} AND #{endDate}
+    </select>
+
+</mapper>

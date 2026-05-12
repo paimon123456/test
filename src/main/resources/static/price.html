@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>价格管理 - 药店管理系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f7fa; min-height: 100vh; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0 40px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: white; font-size: 20px; font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .header-right a { color: white; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+        .search-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .search-form { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .search-item { display: flex; align-items: center; gap: 8px; }
+        .search-item label { font-size: 14px; color: #606266; white-space: nowrap; }
+        .result-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ebeef5; }
+        .result-header h3 { font-size: 16px; color: #303133; }
+        .el-table .warning-row { background: #fdf6ec; }
+        .el-table .success-row { background: #f0f9eb; }
+        .price-input { width: 100px; }
+        .price-edit-dialog .el-dialog__body { padding: 20px 40px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .form-item-full { grid-column: 1 / -1; }
+        .batch-adjust-dialog .el-dialog__body { padding: 20px 40px; }
+        .history-card { background: white; border-radius: 12px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-price-tag"></i> 价格管理</h1>
+        <div class="header-right">
+            <a href="index.html"><i class="el-icon-s-home"></i> 返回首页</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="search-card">
+            <div class="search-form">
+                <div class="search-item">
+                    <label>关键词:</label>
+                    <el-input v-model="keyword" placeholder="药品名称/通用名" clearable style="width: 180px;"></el-input>
+                </div>
+                <div class="search-item">
+                    <label>药品:</label>
+                    <el-select v-model="drugId" filterable clearable placeholder="全部药品" style="width: 200px;">
+                        <el-option v-for="drug in drugList" :key="drug.drugId" :label="drug.drugName" :value="drug.drugId"></el-option>
+                    </el-select>
+                </div>
+                <el-button type="primary" icon="el-icon-search" @click="queryPrice">查询</el-button>
+                <el-button icon="el-icon-refresh" @click="reset">重置</el-button>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="result-header">
+                <h3>药品价格列表</h3>
+                <div>
+                    <el-button type="primary" icon="el-icon-edit" @click="openBatchAdjust">批量调价</el-button>
+                    <el-button type="success" icon="el-icon-document" @click="openHistory">调价记录</el-button>
+                </div>
+            </div>
+
+            <el-table :data="tableData" border stripe v-loading="loading">
+                <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                <el-table-column prop="purchasePrice" label="采购价" width="100" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="!scope.row.editing">¥{{ scope.row.purchasePrice || '-' }}</span>
+                        <el-input-number v-else v-model="scope.row.purchasePrice" :precision="2" :min="0" size="mini" class="price-input"></el-input-number>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="retailPrice" label="零售价" width="100" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="!scope.row.editing">¥{{ scope.row.retailPrice || '-' }}</span>
+                        <el-input-number v-else v-model="scope.row.retailPrice" :precision="2" :min="0" size="mini" class="price-input"></el-input-number>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="memberPrice" label="会员价" width="100" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="!scope.row.editing">¥{{ scope.row.memberPrice || '-' }}</span>
+                        <el-input-number v-else v-model="scope.row.memberPrice" :precision="2" :min="0" size="mini" class="price-input"></el-input-number>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="promoPrice" label="促销价" width="100" align="right">
+                    <template slot-scope="scope">
+                        <el-tag v-if="scope.row.promoPrice && isPromoActive(scope.row)" type="danger" size="mini">¥{{ scope.row.promoPrice }}</el-tag>
+                        <span v-else>-</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="updateTime" label="更新时间" width="160"></el-table-column>
+                <el-table-column label="操作" width="200" fixed="right">
+                    <template slot-scope="scope">
+                        <el-button v-if="!scope.row.editing" type="primary" size="mini" icon="el-icon-edit" @click="editRow(scope.row)">编辑</el-button>
+                        <el-button v-else type="success" size="mini" icon="el-icon-check" @click="saveRow(scope.row)">保存</el-button>
+                        <el-button v-if="scope.row.editing" type="info" size="mini" icon="el-icon-close" @click="cancelEdit(scope.row)">取消</el-button>
+                        <el-button v-if="!scope.row.editing" type="warning" size="mini" icon="el-icon-present" @click="setPromo(scope.row)">促销</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+
+            <el-pagination
+                v-if="total > 0"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="pageNum"
+                :page-sizes="[10, 20, 50, 100]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total"
+                style="margin-top: 20px; text-align: right;">
+            </el-pagination>
+        </div>
+
+        <div class="history-card" v-if="showHistory">
+            <div class="result-header">
+                <h3>价格调整历史</h3>
+                <el-button icon="el-icon-close" @click="showHistory = false">关闭</el-button>
+            </div>
+            <el-table :data="historyData" border stripe max-height="400">
+                <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                <el-table-column prop="priceType" label="价格类型" width="100">
+                    <template slot-scope="scope">
+                        <el-tag v-if="scope.row.priceType === 'purchase'" size="mini" type="info">采购价</el-tag>
+                        <el-tag v-else-if="scope.row.priceType === 'retail'" size="mini" type="primary">零售价</el-tag>
+                        <el-tag v-else-if="scope.row.priceType === 'member'" size="mini" type="success">会员价</el-tag>
+                        <el-tag v-else size="mini">促销价</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="oldPrice" label="原价" width="100" align="right">
+                    <template slot-scope="scope">¥{{ scope.row.oldPrice }}</template>
+                </el-table-column>
+                <el-table-column prop="newPrice" label="新价" width="100" align="right">
+                    <template slot-scope="scope">¥{{ scope.row.newPrice }}</template>
+                </el-table-column>
+                <el-table-column prop="changeRate" label="变动幅度" width="100" align="right">
+                    <template slot-scope="scope">
+                        <span :class="scope.row.changeRate > 0 ? 'text-danger' : 'text-success'">
+                            {{ scope.row.changeRate > 0 ? '+' : '' }}{{ scope.row.changeRate }}%
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="adjustType" label="调整类型" width="100"></el-table-column>
+                <el-table-column prop="reason" label="调整原因" min-width="120"></el-table-column>
+                <el-table-column prop="operator" label="操作人" width="100"></el-table-column>
+                <el-table-column prop="createTime" label="调整时间" width="160"></el-table-column>
+            </el-table>
+        </div>
+    </div>
+
+    <el-dialog title="批量调价" :visible.sync="batchDialogVisible" width="600px" class="batch-adjust-dialog">
+        <el-form :model="batchForm" label-width="100px">
+            <el-form-item label="调价类型">
+                <el-radio-group v-model="batchForm.adjustType">
+                    <el-radio label="rate">按比例调整</el-radio>
+                    <el-radio label="fixed">固定价格</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="价格类型">
+                <el-select v-model="batchForm.priceType" placeholder="请选择价格类型" style="width: 100%;">
+                    <el-option label="采购价" value="purchase"></el-option>
+                    <el-option label="零售价" value="retail"></el-option>
+                    <el-option label="会员价" value="member"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="调价比例" v-if="batchForm.adjustType === 'rate'">
+                <el-input-number v-model="batchForm.adjustRate" :precision="4" :step="0.01" :min="-1" :max="1"></el-input-number>
+                <span style="margin-left: 10px; color: #909399;">(正数上调，负数下调，如 0.1 表示上调10%)</span>
+            </el-form-item>
+            <el-form-item label="新价格" v-if="batchForm.adjustType === 'fixed'">
+                <el-input-number v-model="batchForm.newPrice" :precision="2" :min="0"></el-input-number>
+            </el-form-item>
+            <el-form-item label="生效日期">
+                <el-date-picker v-model="batchForm.effectiveDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="调整原因">
+                <el-input v-model="batchForm.reason" type="textarea" :rows="3" placeholder="请输入调整原因"></el-input>
+            </el-form-item>
+            <el-form-item label="选择药品">
+                <el-transfer
+                    v-model="batchForm.drugIds"
+                    :data="transferData"
+                    :titles="['可选药品', '已选药品']"
+                    filterable
+                    :filter-method="filterMethod"
+                    placeholder="搜索药品"
+                    style="text-align: left;">
+                </el-transfer>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="batchDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitBatchAdjust" :loading="submitting">确认调价</el-button>
+        </div>
+    </el-dialog>
+
+    <el-dialog title="设置促销价" :visible.sync="promoDialogVisible" width="500px">
+        <el-form :model="promoForm" label-width="100px">
+            <el-form-item label="药品名称">
+                <el-input v-model="promoForm.drugName" disabled></el-input>
+            </el-form-item>
+            <el-form-item label="促销价格">
+                <el-input-number v-model="promoForm.promoPrice" :precision="2" :min="0" style="width: 100%;"></el-input-number>
+            </el-form-item>
+            <el-form-item label="促销开始">
+                <el-date-picker v-model="promoForm.promoStart" type="datetime" placeholder="选择开始时间" style="width: 100%;"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="促销结束">
+                <el-date-picker v-model="promoForm.promoEnd" type="datetime" placeholder="选择结束时间" style="width: 100%;"></el-date-picker>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="promoDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitPromo">确认</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        keyword: '',
+        drugId: '',
+        tableData: [],
+        drugList: [],
+        loading: false,
+        pageNum: 1,
+        pageSize: 20,
+        total: 0,
+        showHistory: false,
+        historyData: [],
+        batchDialogVisible: false,
+        promoDialogVisible: false,
+        submitting: false,
+        batchForm: {
+            adjustType: 'rate',
+            priceType: 'purchase',
+            adjustRate: 0,
+            newPrice: 0,
+            effectiveDate: '',
+            reason: '',
+            drugIds: []
+        },
+        promoForm: {
+            drugId: '',
+            drugName: '',
+            promoPrice: 0,
+            promoStart: '',
+            promoEnd: ''
+        },
+        originalRow: null
+    },
+    computed: {
+        transferData() {
+            return this.drugList.map(drug => ({
+                key: drug.drugId,
+                label: drug.drugName + ' - ' + drug.specification
+            }));
+        }
+    },
+    mounted() {
+        this.loadDrugs();
+        this.queryPrice();
+    },
+    methods: {
+        loadDrugs() {
+            axios.get('/drug/list').then(res => {
+                if (res.data.code === 200) {
+                    this.drugList = res.data.data || [];
+                }
+            });
+        },
+        queryPrice() {
+            this.loading = true;
+            axios.get('/price/list', {
+                params: {
+                    drugId: this.drugId,
+                    keyword: this.keyword
+                }
+            }).then(res => {
+                this.loading = false;
+                if (res.data.code === 200) {
+                    this.tableData = (res.data.data || []).map(item => {
+                        item.editing = false;
+                        return item;
+                    });
+                } else {
+                    this.$message.error(res.data.msg || '查询失败');
+                }
+            }).catch(err => {
+                this.loading = false;
+                this.$message.error('请求失败');
+            });
+        },
+        reset() {
+            this.keyword = '';
+            this.drugId = '';
+            this.queryPrice();
+        },
+        editRow(row) {
+            this.originalRow = {...row};
+            row.editing = true;
+        },
+        saveRow(row) {
+            axios.post('/price/update', {
+                drugId: row.drugId,
+                purchasePrice: row.purchasePrice,
+                retailPrice: row.retailPrice,
+                memberPrice: row.memberPrice,
+                promoPrice: row.promoPrice,
+                promoStart: row.promoStart,
+                promoEnd: row.promoEnd,
+                operator: '管理员'
+            }).then(res => {
+                if (res.data.code === 200) {
+                    this.$message.success('保存成功');
+                    row.editing = false;
+                } else {
+                    this.$message.error(res.data.msg || '保存失败');
+                }
+            });
+        },
+        cancelEdit(row) {
+            Object.assign(row, this.originalRow);
+            row.editing = false;
+        },
+        setPromo(row) {
+            this.promoForm = {
+                drugId: row.drugId,
+                drugName: row.drugName,
+                promoPrice: row.retailPrice || 0,
+                promoStart: new Date(),
+                promoEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            };
+            this.promoDialogVisible = true;
+        },
+        submitPromo() {
+            axios.post('/price/update', {
+                drugId: this.promoForm.drugId,
+                promoPrice: this.promoForm.promoPrice,
+                promoStart: this.promoForm.promoStart,
+                promoEnd: this.promoForm.promoEnd,
+                operator: '管理员'
+            }).then(res => {
+                if (res.data.code === 200) {
+                    this.$message.success('促销设置成功');
+                    this.promoDialogVisible = false;
+                    this.queryPrice();
+                } else {
+                    this.$message.error(res.data.msg || '设置失败');
+                }
+            });
+        },
+        isPromoActive(row) {
+            if (!row.promoStart || !row.promoEnd) return false;
+            const now = new Date();
+            const start = new Date(row.promoStart);
+            const end = new Date(row.promoEnd);
+            return now >= start && now <= end;
+        },
+        openBatchAdjust() {
+            this.batchForm = {
+                adjustType: 'rate',
+                priceType: 'purchase',
+                adjustRate: 0,
+                newPrice: 0,
+                effectiveDate: '',
+                reason: '',
+                drugIds: []
+            };
+            this.batchDialogVisible = true;
+        },
+        filterMethod(query, item) {
+            return item.label.toLowerCase().indexOf(query.toLowerCase()) > -1;
+        },
+        submitBatchAdjust() {
+            if (!this.batchForm.drugIds || this.batchForm.drugIds.length === 0) {
+                this.$message.warning('请选择要调价的药品');
+                return;
+            }
+            if (!this.batchForm.reason) {
+                this.$message.warning('请输入调整原因');
+                return;
+            }
+
+            this.submitting = true;
+            axios.post('/price/batchAdjust', {
+                drugIds: this.batchForm.drugIds,
+                priceType: this.batchForm.priceType,
+                adjustType: this.batchForm.adjustType,
+                adjustRate: this.batchForm.adjustType === 'rate' ? this.batchForm.adjustRate : null,
+                items: this.batchForm.adjustType === 'fixed' ? [{
+                    drugId: this.batchForm.drugIds[0],
+                    newPrice: this.batchForm.newPrice
+                }] : null,
+                effectiveDate: this.batchForm.effectiveDate,
+                reason: this.batchForm.reason,
+                operator: '管理员'
+            }).then(res => {
+                this.submitting = false;
+                if (res.data.code === 200) {
+                    this.$message.success('批量调价成功');
+                    this.batchDialogVisible = false;
+                    this.queryPrice();
+                } else {
+                    this.$message.error(res.data.msg || '调价失败');
+                }
+            }).catch(err => {
+                this.submitting = false;
+                this.$message.error('请求失败');
+            });
+        },
+        openHistory() {
+            this.showHistory = true;
+            axios.get('/price/history', {
+                params: {
+                    drugId: this.drugId,
+                    startDate: '',
+                    endDate: '',
+                    priceType: ''
+                }
+            }).then(res => {
+                if (res.data.code === 200) {
+                    this.historyData = res.data.data || [];
+                }
+            });
+        },
+        handleSizeChange(val) {
+            this.pageSize = val;
+            this.queryPrice();
+        },
+        handleCurrentChange(val) {
+            this.pageNum = val;
+            this.queryPrice();
+        }
+    }
+});
+</script>
+</body>
+</html>

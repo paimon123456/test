@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.PriceMapper">
+
+    <select id="getDrugPriceList" resultType="com.example.drug.entity.price.DrugPrice">
+        SELECT
+            dp.price_id AS priceId,
+            dp.drug_id AS drugId,
+            COALESCE(dp.purchase_price, d.purchase_price) AS purchasePrice,
+            COALESCE(dp.retail_price, d.retail_price) AS retailPrice,
+            dp.member_price AS memberPrice,
+            dp.promo_price AS promoPrice,
+            dp.promo_start AS promoStart,
+            dp.promo_end AS promoEnd,
+            dp.operator,
+            dp.update_time AS updateTime,
+            d.drug_name,
+            d.specification
+        FROM drug_info d
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        WHERE d.status = 1
+        <if test="drugId != null and drugId != ''">
+            AND d.drug_id = #{drugId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (d.drug_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR d.generic_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY d.drug_name
+    </select>
+
+    <select id="getDrugPriceById" resultType="com.example.drug.entity.price.DrugPrice">
+        SELECT
+            dp.price_id AS priceId,
+            dp.drug_id AS drugId,
+            COALESCE(dp.purchase_price, d.purchase_price) AS purchasePrice,
+            COALESCE(dp.retail_price, d.retail_price) AS retailPrice,
+            dp.member_price AS memberPrice,
+            dp.promo_price AS promoPrice,
+            dp.promo_start AS promoStart,
+            dp.promo_end AS promoEnd,
+            dp.operator,
+            dp.update_time AS updateTime,
+            d.drug_name,
+            d.specification
+        FROM drug_info d
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        WHERE d.drug_id = #{drugId}
+    </select>
+
+    <insert id="saveDrugPrice" parameterType="com.example.drug.entity.price.DrugPrice">
+        INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price,
+                               promo_price, promo_start, promo_end, operator, update_time)
+        VALUES (#{priceId}, #{drugId}, #{purchasePrice}, #{retailPrice}, #{memberPrice},
+                #{promoPrice}, #{promoStart}, #{promoEnd}, #{operator}, NOW())
+    </insert>
+
+    <update id="updateDrugPrice" parameterType="com.example.drug.entity.price.DrugPrice">
+        UPDATE drug_price
+        SET purchase_price = #{purchasePrice},
+            retail_price = #{retailPrice},
+            member_price = #{memberPrice},
+            promo_price = #{promoPrice},
+            promo_start = #{promoStart},
+            promo_end = #{promoEnd},
+            operator = #{operator},
+            update_time = NOW()
+        WHERE drug_id = #{drugId}
+    </update>
+
+    <select id="getPriceHistory" resultType="com.example.drug.entity.price.PriceHistory">
+        SELECT
+            ph.history_id AS historyId,
+            ph.drug_id AS drugId,
+            ph.price_type AS priceType,
+            ph.old_price AS oldPrice,
+            ph.new_price AS newPrice,
+            ph.change_rate AS changeRate,
+            ph.adjust_type AS adjustType,
+            ph.batch_no AS batchNo,
+            ph.effective_date AS effectiveDate,
+            ph.reason,
+            ph.operator,
+            ph.create_time AS createTime,
+            d.drug_name,
+            d.specification
+        FROM price_history ph
+        INNER JOIN drug_info d ON ph.drug_id = d.drug_id
+        WHERE 1=1
+        <if test="drugId != null and drugId != ''">
+            AND ph.drug_id = #{drugId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND DATE(ph.create_time) >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(ph.create_time) &lt;= #{endDate}
+        </if>
+        <if test="priceType != null and priceType != ''">
+            AND ph.price_type = #{priceType}
+        </if>
+        ORDER BY ph.create_time DESC
+    </select>
+
+    <insert id="savePriceHistory" parameterType="com.example.drug.entity.price.PriceHistory">
+        INSERT INTO price_history (history_id, drug_id, price_type, old_price, new_price,
+                                   change_rate, adjust_type, batch_no, effective_date,
+                                   reason, operator, create_time)
+        VALUES (#{historyId}, #{drugId}, #{priceType}, #{oldPrice}, #{newPrice},
+                #{changeRate}, #{adjustType}, #{batchNo}, #{effectiveDate},
+                #{reason}, #{operator}, NOW())
+    </insert>
+
+    <update id="batchUpdatePrice">
+        UPDATE drug_info d
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        SET
+            <choose>
+                <when test="priceType == 'purchase'">
+                    d.purchase_price = #{newPrice}
+                </when>
+                <when test="priceType == 'retail'">
+                    d.retail_price = #{newPrice}
+                </when>
+                <when test="priceType == 'member'">
+                    dp.member_price = #{newPrice}
+                </when>
+            </choose>
+        WHERE d.drug_id IN
+        <foreach collection="drugIds" item="drugId" open="(" separator="," close=")">
+            #{drugId}
+        </foreach>
+    </update>
+
+    <update id="batchAdjustPriceByRate">
+        UPDATE drug_info
+        SET
+            <choose>
+                <when test="priceType == 'purchase'">
+                    purchase_price = ROUND(purchase_price * (1 + #{adjustRate}), 2)
+                </when>
+                <when test="priceType == 'retail'">
+                    retail_price = ROUND(retail_price * (1 + #{adjustRate}), 2)
+                </when>
+            </choose>
+        WHERE drug_id IN
+        <foreach collection="drugIds" item="drugId" open="(" separator="," close=")">
+            #{drugId}
+        </foreach>
+    </update>
+
+</mapper>

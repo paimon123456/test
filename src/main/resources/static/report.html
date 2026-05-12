@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报表统计 - 药店管理系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f7fa; min-height: 100vh; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0 40px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: white; font-size: 20px; font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .header-right a { color: white; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+        .search-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .search-form { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .search-item { display: flex; align-items: center; gap: 8px; }
+        .search-item label { font-size: 14px; color: #606266; white-space: nowrap; }
+        .result-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ebeef5; }
+        .result-header h3 { font-size: 16px; color: #303133; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; }
+        .summary-card.green { background: linear-gradient(135deg, #67C23A 0%, #85ce61 100%); }
+        .summary-card.orange { background: linear-gradient(135deg, #E6A23C 0%, #ebb563 100%); }
+        .summary-card.red { background: linear-gradient(135deg, #F56C6C 0%, #f78989 100%); }
+        .summary-card h4 { font-size: 13px; opacity: 0.9; margin-bottom: 8px; }
+        .summary-card .value { font-size: 24px; font-weight: 600; }
+        .tabs-container { margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; }
+        .print-btn { background: #409EFF; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .print-btn:hover { background: #66b1ff; }
+        .el-table .warning-row { background: #fdf6ec; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-data-analysis"></i> 报表统计</h1>
+        <div class="header-right">
+            <a href="index.html"><i class="el-icon-s-home"></i> 返回首页</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="search-card">
+            <div class="search-form">
+                <div class="search-item">
+                    <label>报表类型:</label>
+                    <el-select v-model="reportType" placeholder="请选择" style="width: 150px;">
+                        <el-option label="日报" value="daily"></el-option>
+                        <el-option label="月报" value="monthly"></el-option>
+                        <el-option label="销售排行" value="salesRanking"></el-option>
+                        <el-option label="库存周转率" value="inventoryTurnover"></el-option>
+                    </el-select>
+                </div>
+                <div class="search-item" v-if="reportType === 'daily' || reportType === 'salesRanking' || reportType === 'inventoryTurnover'">
+                    <label>开始日期:</label>
+                    <el-date-picker v-model="startDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd" style="width: 150px;"></el-date-picker>
+                </div>
+                <div class="search-item" v-if="reportType === 'daily' || reportType === 'salesRanking' || reportType === 'inventoryTurnover'">
+                    <label>结束日期:</label>
+                    <el-date-picker v-model="endDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd" style="width: 150px;"></el-date-picker>
+                </div>
+                <div class="search-item" v-if="reportType === 'monthly'">
+                    <label>开始月份:</label>
+                    <el-date-picker v-model="startMonth" type="month" placeholder="选择月份" value-format="yyyy-MM" style="width: 150px;"></el-date-picker>
+                </div>
+                <div class="search-item" v-if="reportType === 'monthly'">
+                    <label>结束月份:</label>
+                    <el-date-picker v-model="endMonth" type="month" placeholder="选择月份" value-format="yyyy-MM" style="width: 150px;"></el-date-picker>
+                </div>
+                <div class="search-item">
+                    <label>药品:</label>
+                    <el-select v-model="drugId" filterable clearable placeholder="全部药品" style="width: 200px;">
+                        <el-option v-for="drug in drugList" :key="drug.drugId" :label="drug.drugName" :value="drug.drugId"></el-option>
+                    </el-select>
+                </div>
+                <div class="search-item" v-if="reportType === 'salesRanking'">
+                    <label>排名数量:</label>
+                    <el-input-number v-model="rankLimit" :min="5" :max="100" style="width: 120px;"></el-input-number>
+                </div>
+                <el-button type="primary" icon="el-icon-search" @click="queryReport">查询</el-button>
+                <el-button icon="el-icon-refresh" @click="reset">重置</el-button>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="result-header">
+                <h3>报表数据</h3>
+                <div class="btn-group">
+                    <el-button type="success" icon="el-icon-download" @click="exportExcel">导出Excel</el-button>
+                    <el-button type="primary" icon="el-icon-printer" @click="printReport">打印</el-button>
+                </div>
+            </div>
+
+            <div class="summary-cards" v-if="summary && reportType !== 'inventoryTurnover'">
+                <div class="summary-card">
+                    <h4>采购金额</h4>
+                    <div class="value">¥{{ summary.totalPurchase || 0 }}</div>
+                </div>
+                <div class="summary-card green">
+                    <h4>销售金额</h4>
+                    <div class="value">¥{{ summary.totalSale || 0 }}</div>
+                </div>
+                <div class="summary-card orange">
+                    <h4>利润</h4>
+                    <div class="value">¥{{ summary.totalProfit || 0 }}</div>
+                </div>
+                <div class="summary-card red" v-if="reportType === 'daily' || reportType === 'monthly'">
+                    <h4>期末库存</h4>
+                    <div class="value">{{ summary.totalClosingStock || 0 }}</div>
+                </div>
+            </div>
+
+            <el-tabs v-model="activeTab" type="border-card" @tab-click="handleTabClick">
+                <el-tab-pane label="日报" name="daily" v-if="reportType === 'daily'">
+                    <el-table :data="tableData" border stripe max-height="500">
+                        <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                        <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                        <el-table-column prop="unit" label="单位" width="60"></el-table-column>
+                        <el-table-column prop="openingStock" label="期初库存" width="90" align="right"></el-table-column>
+                        <el-table-column prop="purchaseIn" label="采购入库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="saleOut" label="销售出库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="returnIn" label="退货入库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="returnOut" label="报废出库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="closingStock" label="期末库存" width="90" align="right"></el-table-column>
+                        <el-table-column prop="purchaseAmount" label="采购金额" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.purchaseAmount || 0 }}</template>
+                        </el-table-column>
+                        <el-table-column prop="saleAmount" label="销售金额" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.saleAmount || 0 }}</template>
+                        </el-table-column>
+                        <el-table-column prop="profit" label="利润" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.profit || 0 }}</template>
+                        </el-table-column>
+                    </el-table>
+                </el-tab-pane>
+
+                <el-tab-pane label="月报" name="monthly" v-if="reportType === 'monthly'">
+                    <el-table :data="tableData" border stripe max-height="500">
+                        <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                        <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                        <el-table-column prop="unit" label="单位" width="60"></el-table-column>
+                        <el-table-column prop="openingStock" label="期初库存" width="90" align="right"></el-table-column>
+                        <el-table-column prop="purchaseIn" label="采购入库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="saleOut" label="销售出库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="returnIn" label="退货入库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="returnOut" label="报废出库" width="90" align="right"></el-table-column>
+                        <el-table-column prop="closingStock" label="期末库存" width="90" align="right"></el-table-column>
+                        <el-table-column prop="purchaseAmount" label="采购金额" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.purchaseAmount || 0 }}</template>
+                        </el-table-column>
+                        <el-table-column prop="saleAmount" label="销售金额" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.saleAmount || 0 }}</template>
+                        </el-table-column>
+                        <el-table-column prop="profit" label="利润" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.profit || 0 }}</template>
+                        </el-table-column>
+                    </el-table>
+                </el-tab-pane>
+
+                <el-tab-pane label="销售排行" name="salesRanking" v-if="reportType === 'salesRanking'">
+                    <el-table :data="tableData" border stripe max-height="500">
+                        <el-table-column prop="rank" label="排名" width="80" align="center"></el-table-column>
+                        <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                        <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                        <el-table-column prop="unit" label="单位" width="60"></el-table-column>
+                        <el-table-column prop="totalSalesNum" label="销售数量" width="100" align="right"></el-table-column>
+                        <el-table-column prop="totalSalesAmount" label="销售金额" width="120" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.totalSalesAmount || 0 }}</template>
+                        </el-table-column>
+                        <el-table-column prop="proportion" label="占比" width="100" align="right">
+                            <template slot-scope="scope">{{ scope.row.proportion || 0 }}%</template>
+                        </el-table-column>
+                    </el-table>
+                </el-tab-pane>
+
+                <el-tab-pane label="库存周转率" name="inventoryTurnover" v-if="reportType === 'inventoryTurnover'">
+                    <el-table :data="tableData" border stripe max-height="500">
+                        <el-table-column prop="drugName" label="药品名称" min-width="120"></el-table-column>
+                        <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                        <el-table-column prop="averageStock" label="平均库存" width="100" align="right"></el-table-column>
+                        <el-table-column prop="totalSales" label="总销售量" width="100" align="right"></el-table-column>
+                        <el-table-column prop="totalPurchase" label="总采购量" width="100" align="right"></el-table-column>
+                        <el-table-column prop="turnoverRate" label="周转率" width="100" align="right">
+                            <template slot-scope="scope">{{ scope.row.turnoverRate || 0 }}%</template>
+                        </el-table-column>
+                        <el-table-column prop="turnoverDays" label="周转天数" width="100" align="center"></el-table-column>
+                    </el-table>
+                </el-tab-pane>
+            </el-tabs>
+
+            <el-empty v-if="!tableData || tableData.length === 0" description="暂无数据"></el-empty>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        reportType: 'daily',
+        startDate: '',
+        endDate: '',
+        startMonth: '',
+        endMonth: '',
+        drugId: '',
+        rankLimit: 20,
+        drugList: [],
+        tableData: [],
+        summary: null,
+        activeTab: 'daily'
+    },
+    mounted() {
+        this.initDates();
+        this.loadDrugs();
+        this.queryReport();
+    },
+    methods: {
+        initDates() {
+            const today = new Date();
+            const start = new Date(today);
+            start.setDate(start.getDate() - 7);
+            this.startDate = this.formatDate(start);
+            this.endDate = this.formatDate(today);
+            this.startMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            this.endMonth = this.startMonth;
+        },
+        formatDate(date) {
+            return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        },
+        loadDrugs() {
+            axios.get('/drug/list').then(res => {
+                if (res.data.code === 200) {
+                    this.drugList = res.data.data || [];
+                }
+            });
+        },
+        queryReport() {
+            let url = '';
+            let params = {};
+
+            switch (this.reportType) {
+                case 'daily':
+                    url = '/report/daily';
+                    params = { startDate: this.startDate, endDate: this.endDate, drugId: this.drugId };
+                    this.activeTab = 'daily';
+                    break;
+                case 'monthly':
+                    url = '/report/monthly';
+                    params = { startMonth: this.startMonth, endMonth: this.endMonth, drugId: this.drugId };
+                    this.activeTab = 'monthly';
+                    break;
+                case 'salesRanking':
+                    url = '/report/salesRanking';
+                    params = { startDate: this.startDate, endDate: this.endDate, limit: this.rankLimit };
+                    this.activeTab = 'salesRanking';
+                    break;
+                case 'inventoryTurnover':
+                    url = '/report/inventoryTurnover';
+                    params = { startDate: this.startDate, endDate: this.endDate, drugId: this.drugId };
+                    this.activeTab = 'inventoryTurnover';
+                    break;
+            }
+
+            axios.get(url, { params }).then(res => {
+                if (res.data.code === 200) {
+                    if (this.reportType === 'daily' || this.reportType === 'monthly') {
+                        this.tableData = res.data.data.list || [];
+                        this.summary = res.data.data.summary || null;
+                    } else if (this.reportType === 'salesRanking') {
+                        this.tableData = res.data.data.list || [];
+                        this.summary = { totalSale: res.data.data.totalAmount };
+                    } else {
+                        this.tableData = res.data.data || [];
+                        this.summary = null;
+                    }
+                } else {
+                    this.$message.error(res.data.msg || '查询失败');
+                }
+            }).catch(err => {
+                this.$message.error('请求失败: ' + err.message);
+            });
+        },
+        reset() {
+            this.initDates();
+            this.drugId = '';
+            this.rankLimit = 20;
+            this.queryReport();
+        },
+        exportExcel() {
+            let url = '';
+            let params = {};
+            let fileName = '';
+
+            switch (this.reportType) {
+                case 'daily':
+                    url = '/report/export/daily';
+                    params = { startDate: this.startDate, endDate: this.endDate, drugId: this.drugId };
+                    fileName = '进销存日报';
+                    break;
+                case 'monthly':
+                    url = '/report/export/monthly';
+                    params = { startMonth: this.startMonth, endMonth: this.endMonth, drugId: this.drugId };
+                    fileName = '进销存月报';
+                    break;
+                case 'salesRanking':
+                    url = '/report/export/salesRanking';
+                    params = { startDate: this.startDate, endDate: this.endDate, limit: this.rankLimit };
+                    fileName = '销售排行';
+                    break;
+                case 'inventoryTurnover':
+                    url = '/report/export/inventoryTurnover';
+                    params = { startDate: this.startDate, endDate: this.endDate, drugId: this.drugId };
+                    fileName = '库存周转率';
+                    break;
+            }
+
+            axios.get(url, { params, responseType: 'blob' }).then(res => {
+                const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = fileName + '_' + (this.startDate || this.startMonth) + '_' + (this.endDate || this.endMonth) + '.xlsx';
+                link.click();
+                this.$message.success('导出成功');
+            }).catch(err => {
+                this.$message.error('导出失败');
+            });
+        },
+        printReport() {
+            window.print();
+        },
+        handleTabClick(tab) {
+            console.log('Tab changed:', tab.name);
+        }
+    }
+});
+</script>
+</body>
+</html>
