@@ -84,6 +84,8 @@
         .icon-scrap { color: #795548; }
         .icon-admin { color: #00BCD4; }
         .icon-role { color: #FF9800; }
+        .icon-report { color: #E040FB; }
+        .icon-price { color: #00BCD4; }
     </style>
 </head>
 <body>
@@ -145,6 +147,16 @@
                 <div class="module-icon icon-role"><i class="el-icon-setting"></i></div>
                 <div class="module-title">角色权限</div>
                 <div class="module-desc">角色与权限配置</div>
+            </div>
+            <div class="module-card" @click="goTo('report.html')">
+                <div class="module-icon icon-report"><i class="el-icon-data-analysis"></i></div>
+                <div class="module-title">报表统计</div>
+                <div class="module-desc">进销存日报/月报、销售排行、库存周转率</div>
+            </div>
+            <div class="module-card" @click="goTo('price.html')">
+                <div class="module-icon icon-price"><i class="el-icon-price-tag"></i></div>
+                <div class="module-title">价格管理</div>
+                <div class="module-desc">采购价、零售价、会员价、批量调价</div>
             </div>
         </div>
     </div>

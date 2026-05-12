@@ -74,6 +74,7 @@ CREATE TABLE drug_info (
     medical_insurance VARCHAR(20) COMMENT '医保类型：甲类/乙类/非医保',
     purchase_price DECIMAL(10,2) COMMENT '采购价',
     retail_price DECIMAL(10,2) COMMENT '零售价',
+    member_price DECIMAL(10,2) COMMENT '会员价',
     status TINYINT DEFAULT 1 COMMENT '状态 1在售 0停售',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -368,6 +369,7 @@ CREATE TABLE drug_price (
     drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
     purchase_price DECIMAL(10,2) NOT NULL COMMENT '采购价',
     retail_price DECIMAL(10,2) NOT NULL COMMENT '零售价',
+    member_price DECIMAL(10,2) COMMENT '会员价',
     promo_price DECIMAL(10,2) COMMENT '促销价',
     promo_start DATETIME COMMENT '促销开始时间',
     promo_end DATETIME COMMENT '促销结束时间',
@@ -375,6 +377,25 @@ CREATE TABLE drug_price (
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_drug (drug_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块10】价格管理-药品价格表';
+
+-- 价格变动历史表
+CREATE TABLE price_history (
+    history_id VARCHAR(32) NOT NULL COMMENT '历史ID' PRIMARY KEY,
+    drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
+    price_type VARCHAR(20) NOT NULL COMMENT '价格类型: purchase/retail/member/promo',
+    old_price DECIMAL(10,2) NOT NULL COMMENT '原价',
+    new_price DECIMAL(10,2) NOT NULL COMMENT '新价',
+    change_rate DECIMAL(10,4) COMMENT '变动幅度(百分比)',
+    adjust_type VARCHAR(20) COMMENT '调整类型: 手动调整/批量调价/促销',
+    batch_no VARCHAR(50) COMMENT '批次号',
+    effective_date DATE COMMENT '生效日期',
+    reason VARCHAR(500) COMMENT '调整原因',
+    operator VARCHAR(50) NOT NULL COMMENT '操作人',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    KEY idx_drug (drug_id),
+    KEY idx_price_type (price_type),
+    KEY idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块10】价格管理-价格变动历史表';
 
 CREATE TABLE price_approve (
     approve_id VARCHAR(32) NOT NULL COMMENT '审批ID' PRIMARY KEY,
@@ -534,3 +555,20 @@ INSERT INTO inventory_check (check_id, drug_id, system_stock, actual_stock, diff
 INSERT INTO sales_return (return_id, original_order_id, drug_id, batch_no, return_num, return_reason, refund_amount, status, operator_id, auditor_id, create_time, audit_time) VALUES
 ('sr001', 'so001', '1', 'B20240101', 1, '顾客不满意', 12.00, '已完成', '1', '1', '2024-05-08 15:00:00', '2024-05-08 16:00:00'),
 ('sr002', 'so002', '2', 'C20240115', 1, '药品过期', 9.50, '申请中', '1', NULL, '2024-05-09 10:00:00', NULL);
+
+-- ============================================
+-- 初始化药品会员价数据
+-- ============================================
+UPDATE drug_info SET member_price = ROUND(retail_price * 0.95, 2)
+WHERE member_price IS NULL AND retail_price IS NOT NULL;
+
+-- ============================================
+-- 初始化药品价格数据（从 drug_info 同步）
+-- ============================================
+INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price, operator, update_time)
+SELECT UUID(), drug_id, purchase_price, retail_price, member_price, '系统初始化', NOW()
+FROM drug_info
+WHERE status = 1
+AND NOT EXISTS (SELECT 1 FROM drug_price WHERE drug_price.drug_id = drug_info.drug_id);
+
+

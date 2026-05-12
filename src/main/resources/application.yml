@@ -10,7 +10,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/drug_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false
     username: root
-    password: 123456
+    password: 20050510nzay
     driver-class-name: com.mysql.cj.jdbc.Driver
   # 开启定时任务（效期提醒用）
   task:
