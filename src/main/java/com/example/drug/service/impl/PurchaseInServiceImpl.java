@@ -10,6 +10,7 @@ import com.example.drug.entity.inventory.PurchaseInItem;
 import com.example.drug.entity.purchase.InventoryReserve;
 import com.example.drug.entity.purchase.PurchaseItem;
 import com.example.drug.mapper.*;
+import com.example.drug.service.inventory.InventoryLogService;
 import com.example.drug.service.inventory.PurchaseInService;
 import com.example.drug.util.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,9 @@ public class PurchaseInServiceImpl implements PurchaseInService {
     
     @Autowired
     private InventoryReserveMapper inventoryReserveMapper;
+    
+    @Autowired
+    private InventoryLogService inventoryLogService;
     
     /**
      * 药品入库（采购入库）
@@ -66,7 +70,9 @@ public class PurchaseInServiceImpl implements PurchaseInService {
                 
                 if (existingInventory != null) {
                     // 3a. 已存在，更新库存数量
+                    Integer beforeStock = existingInventory.getStockNum();
                     existingInventory.setStockNum(existingInventory.getStockNum() + item.getPurchaseNum());
+                    Integer afterStock = existingInventory.getStockNum();
                     existingInventory.setProductionDate(item.getProductionDate());
                     existingInventory.setExpiryDate(item.getExpiryDate());
                     existingInventory.setWarehouseId(item.getWarehouseId());
@@ -76,6 +82,20 @@ public class PurchaseInServiceImpl implements PurchaseInService {
                     updateInventoryStatus(existingInventory);
                     
                     inventoryMapper.updateById(existingInventory);
+                    
+                    // 记录库存变动日志
+                    inventoryLogService.logInventoryChange(
+                        existingInventory.getInventoryId(),
+                        existingInventory.getDrugId(),
+                        existingInventory.getBatchNo(),
+                        "采购入库",
+                        item.getPurchaseNum(),
+                        beforeStock,
+                        afterStock,
+                        dto.getOrderId(),
+                        dto.getOperatorId(),
+                        "采购入库"
+                    );
                 } else {
                     // 3b. 不存在，创建新库存记录
                     Inventory inventory = new Inventory();
@@ -93,6 +113,20 @@ public class PurchaseInServiceImpl implements PurchaseInService {
                     updateInventoryStatus(inventory);
                     
                     inventoryMapper.insert(inventory);
+                    
+                    // 记录库存变动日志（新增库存）
+                    inventoryLogService.logInventoryChange(
+                        inventory.getInventoryId(),
+                        inventory.getDrugId(),
+                        inventory.getBatchNo(),
+                        "采购入库",
+                        item.getPurchaseNum(),
+                        0,
+                        item.getPurchaseNum(),
+                        dto.getOrderId(),
+                        dto.getOperatorId(),
+                        "采购入库-新建库存"
+                    );
                 }
                 
                 // 4. 释放对应的库存预占（如果有采购单关联）

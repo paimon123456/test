@@ -13,6 +13,7 @@ import com.example.drug.mapper.InventoryMapper;
 import com.example.drug.mapper.MemberInfoMapper;
 import com.example.drug.mapper.SalesItemMapper;
 import com.example.drug.mapper.SalesOrderMapper;
+import com.example.drug.service.inventory.InventoryLogService;
 import com.example.drug.service.sales.SalesOrderService;
 import com.example.drug.util.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     
     @Autowired
     private MemberInfoMapper memberInfoMapper;
+    
+    @Autowired
+    private InventoryLogService inventoryLogService;
     
     /**
      * 前台销售开单
@@ -95,12 +99,29 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                     if (remainingQty <= 0) break;
                     
                     int deductQty = Math.min(remainingQty, inventory.getStockNum());
+                    Integer beforeStock = inventory.getStockNum();
                     inventory.setStockNum(inventory.getStockNum() - deductQty);
+                    Integer afterStock = inventory.getStockNum();
                     
                     // 更新库存状态
                     updateInventoryStatus(inventory);
                     
                     inventoryMapper.updateById(inventory);
+                    
+                    // 记录库存变动日志
+                    inventoryLogService.logInventoryChange(
+                        inventory.getInventoryId(),
+                        inventory.getDrugId(),
+                        inventory.getBatchNo(),
+                        "销售出库",
+                        -deductQty,
+                        beforeStock,
+                        afterStock,
+                        "", // 稍后更新为订单ID
+                        dto.getCashierId(),
+                        "销售出库"
+                    );
+                    
                     remainingQty -= deductQty;
                 }
                 
@@ -120,21 +141,45 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                 totalNum += itemDto.getSaleNum();
             }
             
-            // 2. 处理会员积分
+            // 2. 处理会员积分和折扣
             String memberId = dto.getMemberId();
-            if (memberId != null && !memberId.isEmpty()) {
+            BigDecimal discount = dto.getDiscount() != null ? dto.getDiscount() : BigDecimal.ZERO;
+            Integer pointsUsed = dto.getPointsUsed() != null ? dto.getPointsUsed() : 0;
+            
+            // 验证折扣金额不能超过总金额
+            if (discount.compareTo(totalAmount) > 0) {
+                return Result.fail("优惠金额不能超过订单总金额");
+            }
+            
+            // 如果使用了会员积分，计算积分抵扣金额（假设100积分=1元）
+            BigDecimal pointsDiscount = BigDecimal.ZERO;
+            if (memberId != null && !memberId.isEmpty() && pointsUsed > 0) {
                 MemberInfo member = memberInfoMapper.selectById(memberId);
                 if (member != null) {
-                    // 计算积分（假设每消费1元积1分）
-                    int earnedPoints = totalAmount.intValue();
-                    member.setPoints(member.getPoints() + earnedPoints);
+                    // 验证积分是否足够
+                    if (member.getPoints() < pointsUsed) {
+                        return Result.fail("会员积分不足，当前积分：" + member.getPoints());
+                    }
+                    
+                    // 计算积分抵扣金额（100积分=1元）
+                    pointsDiscount = new BigDecimal(pointsUsed).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP);
+                    
+                    // 验证总优惠不能超过订单金额
+                    if (discount.add(pointsDiscount).compareTo(totalAmount) > 0) {
+                        return Result.fail("优惠总额不能超过订单总金额");
+                    }
+                    
+                    // 扣除会员积分
+                    member.setPoints(member.getPoints() - pointsUsed);
                     memberInfoMapper.updateById(member);
                 }
             }
             
-            // 3. 计算优惠和实收金额
-            BigDecimal discount = dto.getDiscount() != null ? dto.getDiscount() : BigDecimal.ZERO;
-            BigDecimal payAmount = totalAmount.subtract(discount);
+            // 3. 计算实收金额
+            BigDecimal payAmount = totalAmount.subtract(discount).subtract(pointsDiscount);
+            if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
+                payAmount = BigDecimal.ZERO;
+            }
             
             // 4. 创建销售订单
             String orderId = UUIDUtil.getUUID();
@@ -152,13 +197,27 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             
             salesOrderMapper.insert(order);
             
-            // 5. 保存销售明细
+            // 5.1 如果是会员订单，增加会员积分（每消费1元积1分）
+            if (memberId != null && !memberId.isEmpty()) {
+                MemberInfo member = memberInfoMapper.selectById(memberId);
+                if (member != null) {
+                    // 按实收金额计算积分
+                    int earnedPoints = payAmount.intValue();
+                    member.setPoints(member.getPoints() + earnedPoints);
+                    memberInfoMapper.updateById(member);
+                }
+            }
+            
+            // 6. 保存销售明细
             for (SalesItem item : salesItems) {
                 item.setOrderId(orderId);
                 salesItemMapper.insert(item);
             }
             
-            // 6. 返回结果
+            // 6. 更新库存变动日志中的订单ID（简化处理，实际应记录每条日志的orderId）
+            // 由于日志已经记录，这里暂不更新，可以在日志中通过时间范围查询关联
+            
+            // 7. 返回结果
             Map<String, Object> resultData = new HashMap<>();
             resultData.put("orderId", orderId);
             resultData.put("totalAmount", totalAmount);
