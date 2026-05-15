@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.PurchaseInItemMapper">
+
+    <!-- 根据入库单ID查询明细 -->
+    <select id="selectByInId" resultType="com.example.drug.entity.inventory.PurchaseInItem">
+        SELECT 
+            pii.*,
+            d.drug_name,
+            d.specification,
+            w.warehouse_name
+        FROM purchase_in_item pii
+        LEFT JOIN drug_info d ON pii.drug_id = d.drug_id
+        LEFT JOIN warehouse w ON pii.warehouse_id = w.warehouse_id
+        WHERE pii.in_id = #{inId}
+        ORDER BY pii.create_time
+    </select>
+
+    <!-- 批量插入明细 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO purchase_in_item (in_item_id, in_id, item_id, drug_id, batch_no, production_date, 
+            expiry_date, in_num, purchase_price, subtotal, warehouse_id, location, operator_id, create_time)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.inItemId}, #{item.inId}, #{item.itemId}, #{item.drugId}, #{item.batchNo}, #{item.productionDate},
+             #{item.expiryDate}, #{item.inNum}, #{item.purchasePrice}, #{item.subtotal}, #{item.warehouseId}, 
+             #{item.location}, #{item.operatorId}, #{item.createTime})
+        </foreach>
+    </insert>
+
+</mapper>

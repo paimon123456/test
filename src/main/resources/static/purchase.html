@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>采购管理系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 0 40px;
+            height: 70px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-actions { display: flex; gap: 15px; align-items: center; }
+        .action-btn {
+            color: #606266;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+            background: transparent;
+            border: 1px solid #dcdfe6;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .action-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+        .container { max-width: 1800px; margin: 30px auto; padding: 0 30px; }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid transparent;
+            border-image: linear-gradient(90deg, #667eea, #764ba2, #667eea) 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-title::before {
+            content: '';
+            width: 5px;
+            height: 24px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+        }
+        .stats-bar { display: flex; gap: 20px; margin-bottom: 30px; }
+        .stat-item {
+            flex: 1;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .stat-item:hover { transform: translateY(-5px); }
+        .stat-label { font-size: 14px; color: #909399; margin-bottom: 8px; }
+        .stat-value { font-size: 32px; font-weight: 600; }
+        .stat-icon { font-size: 40px; position: absolute; right: 20px; top: 20px; opacity: 0.15; }
+        .form-row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .form-row .el-input, .form-row .el-select, .form-row .el-date-picker { flex: 1; min-width: 180px; }
+        .form-row .el-button--primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 0 30px;
+        }
+        .el-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; }
+        .el-table .el-button { border-radius: 6px; padding: 7px 15px; }
+        .el-dialog__header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .el-dialog__title { color: white !important; }
+        .item-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .item-row .el-input { flex: 1; }
+        .order-list { margin-top: 20px; }
+        .order-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+        }
+        .order-card.pending { border-left-color: #e6a23c; }
+        .order-card.approved { border-left-color: #67c23a; }
+        .order-card.cancelled { border-left-color: #909399; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .order-info { display: flex; gap: 30px; color: #606266; font-size: 14px; }
+        .order-total { font-size: 20px; font-weight: 600; color: #f56c6c; }
+        .el-tag { margin-right: 5px; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-shopping-cart-2"></i> 采购管理系统</h1>
+        <div class="header-actions">
+            <span class="action-btn" @click="gotoPage('index.html')"><i class="el-icon-s-home"></i> 首页</span>
+            <span class="action-btn" @click="gotoPage('supplier.html')"><i class="el-icon-s-shop"></i> 供应商管理</span>
+            <span class="action-btn" @click="logout"><i class="el-icon-switch-button"></i> 退出</span>
+        </div>
+    </div>
+    <div class="container">
+        <!-- 统计卡片 -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">待审核订单</div>
+                <div class="stat-value" style="color: #e6a23c;">{{ statistics.pendingCount }}</div>
+                <i class="el-icon-s-order stat-icon" style="color: #e6a23c;"></i>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">本月采购金额</div>
+                <div class="stat-value" style="color: #667eea;">¥{{ statistics.monthlyAmount || 0 }}</div>
+                <i class="el-icon-money stat-icon" style="color: #667eea;"></i>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">全部订单</div>
+                <div class="stat-value" style="color: #67c23a;">{{ orderList.length }}</div>
+                <i class="el-icon-document stat-icon" style="color: #67c23a;"></i>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">本月订单数</div>
+                <div class="stat-value" style="color: #f56c6c;">{{ statistics.monthlyCount || 0 }}</div>
+                <i class="el-icon-goods stat-icon" style="color: #f56c6c;"></i>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="el-icon-plus"></i> 创建采购订单</div>
+            <div class="form-row">
+                <el-select v-model="orderForm.supplierId" placeholder="选择供应商" style="flex: 1;">
+                    <el-option v-for="s in supplierList" :key="s.supplierId" :label="s.supplierName" :value="s.supplierId"></el-option>
+                </el-select>
+                <el-date-picker v-model="orderForm.expectedDate" type="date" placeholder="期望到货日期" style="flex: 1;" value-format="yyyy-MM-dd"></el-date-picker>
+                <el-input v-model="orderForm.remark" placeholder="备注" style="flex: 1;"></el-input>
+            </div>
+
+            <!-- 药品明细输入区 - 始终显示 -->
+            <div style="margin-top: 20px; padding: 20px; background: #f5f7fa; border-radius: 10px;">
+                <div style="font-weight: 600; margin-bottom: 15px; color: #303133;"><i class="el-icon-medicines"></i> 采购药品明细</div>
+                <div class="item-row" style="align-items: center;">
+                    <div style="display: flex; flex-direction: column; flex: 2; min-width: 200px;">
+                        <span style="font-size: 12px; color: #909399; margin-bottom: 2px;">药品名称</span>
+                        <el-select v-model="tempItem.drugId" placeholder="请选择药品" filterable style="flex: 1;" @change="onDrugSelect">
+                            <el-option v-for="drug in drugList" :key="drug.drugId" :label="drug.drugName" :value="drug.drugId">
+                                <span style="float: left">{{ drug.drugName }}</span>
+                                <span style="float: right; color: #8492a6; font-size: 12px;">{{ drug.specification || '-' }}</span>
+                            </el-option>
+                        </el-select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; flex: 1; min-width: 120px;">
+                        <span style="font-size: 12px; color: #909399; margin-bottom: 2px;">规格/型号</span>
+                        <el-input v-model="tempItem.specification" placeholder="自动填充" style="flex: 1;" readonly></el-input>
+                    </div>
+                    <div style="display: flex; flex-direction: column; flex: 0.6; min-width: 100px;">
+                        <span style="font-size: 12px; color: #909399; margin-bottom: 2px;">数量</span>
+                        <el-input v-model.number="tempItem.purchaseNum" placeholder="输入数量" type="number" style="flex: 1;"></el-input>
+                    </div>
+                    <div style="display: flex; flex-direction: column; flex: 0.6; min-width: 100px;">
+                        <span style="font-size: 12px; color: #909399; margin-bottom: 2px;">单价(元)</span>
+                        <el-input v-model.number="tempItem.purchasePrice" placeholder="自动填充" type="number" style="flex: 1;"></el-input>
+                    </div>
+                    <div style="display: flex; flex-direction: column; flex: 0.5; min-width: 80px;">
+                        <span style="font-size: 12px; color: #909399; margin-bottom: 2px;">单位</span>
+                        <el-input v-model="tempItem.unit" placeholder="盒/瓶" style="flex: 1;"></el-input>
+                    </div>
+                    <el-button type="primary" @click="addOrderItem" icon="el-icon-plus" style="margin-top: 18px;">添加</el-button>
+                </div>
+
+                <!-- 已添加的药品列表 -->
+                <div v-if="orderForm.items.length > 0">
+                    <el-table :data="orderForm.items" size="small" style="margin-top: 15px;" stripe>
+                        <el-table-column prop="drugName" label="药品名称"></el-table-column>
+                        <el-table-column prop="specification" label="规格" width="120"></el-table-column>
+                        <el-table-column prop="purchaseNum" label="数量" width="80"></el-table-column>
+                        <el-table-column prop="purchasePrice" label="单价(元)" width="100">
+                            <template slot-scope="scope">¥{{ scope.row.purchasePrice }}</template>
+                        </el-table-column>
+                        <el-table-column prop="unit" label="单位" width="80"></el-table-column>
+                        <el-table-column label="小计" width="100">
+                            <template slot-scope="scope">¥{{ (scope.row.purchaseNum * scope.row.purchasePrice).toFixed(2) }}</template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="100">
+                            <template slot-scope="scope">
+                                <el-button size="mini" type="danger" @click="removeOrderItem(scope.$index)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <div style="text-align: right; margin-top: 15px;">
+                        <span style="font-size: 18px; margin-right: 20px;">订单总金额：<strong style="color: #f56c6c;">¥{{ orderTotalAmount }}</strong></span>
+                        <el-button type="primary" size="medium" @click="createOrder" icon="el-icon-check">提交订单</el-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="el-icon-s-operation"></i> 采购订单列表</div>
+            <div class="form-row" style="margin-bottom: 15px;">
+                <el-select v-model="filterStatus" placeholder="订单状态" clearable style="width: 150px;">
+                    <el-option label="待审核" value="待审核"></el-option>
+                    <el-option label="已通过" value="已通过"></el-option>
+                    <el-option label="已取消" value="已取消"></el-option>
+                </el-select>
+                <el-button type="primary" @click="loadOrders" icon="el-icon-search">查询</el-button>
+            </div>
+            <div v-if="orderList.length === 0" style="text-align: center; padding: 50px; color: #909399;">
+                暂无采购订单
+            </div>
+            <div v-else class="order-list">
+                <div v-for="order in filteredOrders" :key="order.orderId" 
+                     class="order-card" :class="{pending: order.status === '待审核', approved: order.status === '已通过', cancelled: order.status === '已取消'}">
+                    <div class="order-header">
+                        <div>
+                            <strong style="font-size: 16px;">{{ order.orderNo }}</strong>
+                            <span style="margin-left: 15px; color: #909399;">供应商ID：{{ order.supplierId }}</span>
+                        </div>
+                        <div>
+                            <el-tag v-if="order.status === '待审核'" type="warning">待审核</el-tag>
+                            <el-tag v-else-if="order.status === '已通过'" type="success">已通过</el-tag>
+                            <el-tag v-else-if="order.status === '已驳回'" type="danger">已驳回</el-tag>
+                            <el-tag v-else type="info">已取消</el-tag>
+                        </div>
+                    </div>
+                    <div class="order-info">
+                        <span><i class="el-icon-date"></i> 创建：{{ formatDate(order.createTime) }}</span>
+                        <span v-if="order.expectedDate"><i class="el-icon-clock"></i> 期望：{{ order.expectedDate }}</span>
+                        <span><i class="el-icon-user"></i> 经办人：{{ order.operatorId || '系统' }}</span>
+                    </div>
+                    <div style="text-align: right; margin-top: 15px;">
+                        <span class="order-total">¥{{ order.totalAmount || 0 }}</span>
+                        <span style="margin-left: 20px;">
+                            <el-button v-if="order.status === '待审核'" type="primary" size="small" @click="auditOrder(order, true)" icon="el-icon-check">审核通过</el-button>
+                            <el-button v-if="order.status === '待审核'" type="danger" size="small" @click="auditOrder(order, false)" icon="el-icon-close">驳回</el-button>
+                            <el-button v-if="order.status === '待审核' || order.status === '已通过'" type="warning" size="small" @click="cancelOrder(order)" icon="el-icon-minus">取消</el-button>
+                            <el-button size="small" @click="viewOrder(order)" icon="el-icon-view">详情</el-button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单详情弹窗 -->
+    <el-dialog :title="'订单详情 - ' + (currentOrder.orderNo || '')" :visible.sync="detailDialogVisible" width="700px">
+        <el-descriptions :column="2" border v-if="currentOrder.orderId">
+            <el-descriptions-item label="订单编号">{{ currentOrder.orderNo }}</el-descriptions-item>
+            <el-descriptions-item label="供应商ID">{{ currentOrder.supplierId }}</el-descriptions-item>
+            <el-descriptions-item label="订单金额">¥{{ currentOrder.totalAmount }}</el-descriptions-item>
+            <el-descriptions-item label="订单状态">
+                <el-tag v-if="currentOrder.status === '待审核'" type="warning">待审核</el-tag>
+                <el-tag v-else-if="currentOrder.status === '已通过'" type="success">已通过</el-tag>
+                <el-tag v-else-if="currentOrder.status === '已驳回'" type="danger">已驳回</el-tag>
+                <el-tag v-else type="info">已取消</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="期望到货">{{ currentOrder.expectedDate || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDate(currentOrder.createTime) }}</el-descriptions-item>
+            <el-descriptions-item label="备注" :span="2">{{ currentOrder.remark || '-' }}</el-descriptions-item>
+        </el-descriptions>
+    </el-dialog>
+</div>
+
+<script>
+axios.defaults.baseURL = 'http://localhost:8080';
+new Vue({
+    el: '#app',
+    data: {
+        orderList: [],
+        supplierList: [],
+        drugList: [],
+        statistics: { pendingCount: 0, monthlyAmount: 0, monthlyCount: 0 },
+        filterStatus: '',
+        orderForm: {
+            supplierId: '',
+            expectedDate: '',
+            remark: '',
+            items: []
+        },
+        tempItem: { drugId: '', drugName: '', specification: '', purchaseNum: 1, purchasePrice: 0, unit: '' },
+        currentOrder: {},
+        detailDialogVisible: false
+    },
+    computed: {
+        orderTotalAmount() {
+            return this.orderForm.items.reduce((sum, item) => sum + (item.purchaseNum * item.purchasePrice), 0).toFixed(2);
+        },
+        filteredOrders() {
+            if (!this.filterStatus) return this.orderList;
+            return this.orderList.filter(o => o.status === this.filterStatus);
+        }
+    },
+    mounted() {
+        this.loadSuppliers();
+        this.loadDrugs();
+        this.loadOrders();
+        this.loadStatistics();
+    },
+    methods: {
+        formatDate(date) {
+            if (!date) return '-';
+            if (typeof date === 'string') return date;
+            return new Date(date).format('yyyy-MM-dd hh:mm');
+        },
+        loadSuppliers() {
+            axios.get('/supplier/list').then(res => {
+                if (res.data.code === 200) {
+                    this.supplierList = res.data.data.records || res.data.data || [];
+                }
+            });
+        },
+        loadDrugs() {
+            axios.get('/drug/list').then(res => {
+                if (res.data.code === 200) {
+                    this.drugList = res.data.data || [];
+                }
+            });
+        },
+        onDrugSelect(drugId) {
+            const drug = this.drugList.find(d => d.drugId === drugId);
+            if (drug) {
+                this.tempItem.drugId = drug.drugId;
+                this.tempItem.drugName = drug.drugName;
+                this.tempItem.specification = drug.specification || '';
+                this.tempItem.unit = drug.unit || '盒';
+                // 单价可由用户修改，默认为0
+                if (!this.tempItem.purchasePrice || this.tempItem.purchasePrice === 0) {
+                    this.tempItem.purchasePrice = drug.price || 0;
+                }
+            }
+        },
+        loadOrders() {
+            axios.get('/purchase/order/list').then(res => {
+                if (res.data.code === 200) {
+                    this.orderList = res.data.data.records || res.data.data || [];
+                }
+            });
+        },
+        loadStatistics() {
+            axios.get('/purchase/order/pending/count').then(res => {
+                if (res.data.code === 200) {
+                    this.statistics.pendingCount = res.data.data.count || 0;
+                }
+            });
+            axios.get('/purchase/order/statistics').then(res => {
+                if (res.data.code === 200) {
+                    const data = res.data.data || {};
+                    this.statistics.monthlyAmount = data.totalAmount || 0;
+                }
+            });
+        },
+        addOrderItem() {
+            if (!this.tempItem.drugId) {
+                this.$message.warning('请选择药品');
+                return;
+            }
+            if (!this.tempItem.purchaseNum || this.tempItem.purchaseNum <= 0) {
+                this.$message.warning('请输入有效的数量');
+                return;
+            }
+            if (!this.tempItem.purchasePrice || this.tempItem.purchasePrice <= 0) {
+                this.$message.warning('请输入有效的单价');
+                return;
+            }
+            this.orderForm.items.push({
+                drugId: this.tempItem.drugId,
+                drugName: this.tempItem.drugName,
+                specification: this.tempItem.specification || '-',
+                purchaseNum: this.tempItem.purchaseNum,
+                purchasePrice: this.tempItem.purchasePrice,
+                unit: this.tempItem.unit || '盒'
+            });
+            this.tempItem = { drugId: '', drugName: '', specification: '', purchaseNum: 1, purchasePrice: 0, unit: '' };
+        },
+        removeOrderItem(index) {
+            this.orderForm.items.splice(index, 1);
+        },
+        createOrder() {
+            if (!this.orderForm.supplierId) {
+                this.$message.warning('请选择供应商');
+                return;
+            }
+            if (this.orderForm.items.length === 0) {
+                this.$message.warning('请添加采购药品');
+                return;
+            }
+            const data = {
+                supplierId: this.orderForm.supplierId,
+                expectedDate: this.orderForm.expectedDate,
+                remark: this.orderForm.remark,
+                operatorId: 'admin',
+                items: this.orderForm.items
+            };
+            axios.post('/purchase/order/create', data).then(res => {
+                if (res.data.code === 200) {
+                    this.$message.success('订单创建成功');
+                    this.orderForm = { supplierId: '', expectedDate: '', remark: '', items: [] };
+                    this.loadOrders();
+                    this.loadStatistics();
+                } else {
+                    this.$message.error(res.data.msg || '创建失败');
+                }
+            }).catch(err => {
+                this.$message.error(err.response?.data?.msg || '创建失败');
+            });
+        },
+        auditOrder(order, approved) {
+            const action = approved ? '通过' : '驳回';
+            this.$confirm('确认' + action + '此订单？', '提示', { type: 'success' }).then(() => {
+                axios.post('/purchase/order/audit', null, {
+                    params: {
+                        orderId: order.orderId,
+                        auditorId: 'admin',
+                        approved: approved,
+                        remark: ''
+                    }
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('审核' + action + '成功');
+                        this.loadOrders();
+                        this.loadStatistics();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            });
+        },
+        cancelOrder(order) {
+            this.$confirm('确认取消此订单？', '提示', { type: 'warning' }).then(() => {
+                axios.post('/purchase/order/cancel', null, {
+                    params: {
+                        orderId: order.orderId,
+                        operatorId: 'admin'
+                    }
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('订单已取消');
+                        this.loadOrders();
+                        this.loadStatistics();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            });
+        },
+        viewOrder(order) {
+            this.currentOrder = { ...order };
+            this.detailDialogVisible = true;
+        },
+        gotoPage(page) { location.href = page; },
+        logout() { location.href = 'login.html'; }
+    }
+});
+// 日期格式化
+if (!Date.prototype.format) {
+    Date.prototype.format = function(fmt) {
+        var o = {
+            "M+": this.getMonth() + 1,
+            "d+": this.getDate(),
+            "h+": this.getHours(),
+            "m+": this.getMinutes(),
+            "s+": this.getSeconds(),
+            "q+": Math.floor((this.getMonth() + 3) / 3),
+            "S": this.getMilliseconds()
+        };
+        if (/(y+)/.test(fmt)) {
+            fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+        }
+        for (var k in o) {
+            if (new RegExp("(" + k + ")").test(fmt)) {
+                fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+            }
+        }
+        return fmt;
+    };
+}
+</script>
+</body>
+</html>

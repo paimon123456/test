@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.SupplierReconciliationMapper">
+
+    <!-- 查询对账列表 -->
+    <select id="selectReconciliationList" resultType="com.example.drug.entity.supplier.SupplierReconciliation">
+        SELECT 
+            sr.*,
+            s.supplier_name,
+            s.supplier_code
+        FROM supplier_reconciliation sr
+        LEFT JOIN supplier s ON sr.supplier_id = s.supplier_id
+        <where>
+            <if test="supplierId != null and supplierId != ''">
+                AND sr.supplier_id = #{supplierId}
+            </if>
+            <if test="status != null and status != ''">
+                AND sr.status = #{status}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND sr.create_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND sr.create_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY sr.create_time DESC
+    </select>
+
+    <!-- 查询对账详情 -->
+    <select id="selectReconciliationDetail" resultType="com.example.drug.entity.supplier.SupplierReconciliation">
+        SELECT 
+            sr.*,
+            s.supplier_name,
+            s.supplier_code
+        FROM supplier_reconciliation sr
+        LEFT JOIN supplier s ON sr.supplier_id = s.supplier_id
+        WHERE sr.bill_id = #{billId}
+    </select>
+
+</mapper>
