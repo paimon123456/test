@@ -42,6 +42,9 @@ public class Drug {
     // 医保类型
     private String medicalInsurance;
     
+    // 有效期
+    private Date expiryDate;
+    
     // 采购价
     private BigDecimal purchasePrice;
     

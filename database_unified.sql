@@ -72,6 +72,7 @@ CREATE TABLE drug_info (
     approval_no VARCHAR(50) NOT NULL COMMENT '批准文号',
     category VARCHAR(20) NOT NULL COMMENT '分类：处方药/OTC/器械/保健品',
     medical_insurance VARCHAR(20) COMMENT '医保类型：甲类/乙类/非医保',
+    expiry_date DATE COMMENT '有效期',
     purchase_price DECIMAL(10,2) COMMENT '采购价',
     retail_price DECIMAL(10,2) COMMENT '零售价',
     member_price DECIMAL(10,2) COMMENT '会员价',

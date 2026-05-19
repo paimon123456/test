@@ -532,6 +532,9 @@
                 <el-input v-model="form.purchasePrice" placeholder="请输入进价" prefix-icon="el-icon-money"></el-input>
                 <el-input v-model="form.retailPrice" placeholder="请输入零售价" prefix-icon="el-icon-sell"></el-input>
                 <el-input v-model="form.medicalInsurance" placeholder="请输入医保类型" prefix-icon="el-icon-postcard"></el-input>
+                <el-date-picker v-model="form.expiryDate" type="date" placeholder="请选择有效期" format="yyyy-MM-dd" value-format="yyyy-MM-dd" style="flex:1;min-width:200px;"></el-date-picker>
+            </div>
+            <div class="form-row">
                 <el-button v-if="!editMode" type="primary" @click="add" icon="el-icon-plus">添加药品</el-button>
                 <el-button v-if="editMode" type="primary" @click="update" icon="el-icon-check">保存修改</el-button>
                 <el-button v-if="editMode" @click="cancelEdit" icon="el-icon-close">取消</el-button>
@@ -568,6 +571,7 @@
                         <span v-else>-</span>
                     </template>
                 </el-table-column>
+                <el-table-column prop="expiryDate" label="有效期" width="120"></el-table-column>
                 <el-table-column label="状态" width="100">
                     <template slot-scope="scope">
                         <span class="status-badge" :class="scope.row.status===1 || scope.row.status==='1'?'status-normal':'status-off'">
@@ -610,7 +614,8 @@
                 category:'',
                 medicalInsurance:'',
                 purchasePrice:'',
-                retailPrice:''
+                retailPrice:'',
+                expiryDate:''
             },
             editMode:false,
             editId:null,
@@ -684,7 +689,8 @@
                     category: row.category || '',
                     medicalInsurance: row.medicalInsurance || '',
                     purchasePrice: row.purchasePrice || '',
-                    retailPrice: row.retailPrice || ''
+                    retailPrice: row.retailPrice || '',
+                    expiryDate: row.expiryDate || ''
                 };
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
@@ -723,7 +729,8 @@
                     category:'',
                     medicalInsurance:'',
                     purchasePrice:'',
-                    retailPrice:''
+                    retailPrice:'',
+                    expiryDate:''
                 };
             },
             cancelEdit(){
