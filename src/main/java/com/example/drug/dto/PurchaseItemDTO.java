@@ -3,6 +3,7 @@ package com.example.drug.dto;
 import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Date;
 
 /**
  * 采购明细DTO
@@ -17,8 +18,8 @@ public class PurchaseItemDTO implements Serializable {
     private Integer purchaseNum;
     private BigDecimal purchasePrice;
     private String batchNo;
-    private String productionDate;
-    private String expiryDate;
+    private Date productionDate;
+    private Date expiryDate;
     private String warehouseId;
     private String location;
 }

@@ -673,14 +673,14 @@ INSERT INTO purchase_item (item_id, order_id, drug_id, purchase_num, purchase_pr
 
 -- 插入采购入库单
 INSERT INTO purchase_in (in_id, in_no, order_id, supplier_id, operator_id, warehouse_id, total_amount, status, in_time) VALUES
-('in001', 'IN20240508001', 'po001', 'sup001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
-('in002', 'IN20240512001', 'po002', 'sup002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
+('IN001', 'IN20240508001', 'PO001', 'S001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
+('IN002', 'IN20240512001', 'PO002', 'S002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
 
 -- 插入入库明细
 INSERT INTO purchase_in_item (in_item_id, in_id, item_id, drug_id, batch_no, production_date, expiry_date, 
     in_num, purchase_price, subtotal, warehouse_id, location, operator_id) VALUES
-('ini001', 'in001', 'pi001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
-('ini002', 'in002', 'pi002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
+('INI001', 'IN001', 'PI001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
+('INI002', 'IN002', 'PI002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
 
 -- ============================================
 -- 【新增】测试数据 - 会员、销售订单、盘点、退货
@@ -728,10 +728,8 @@ WHERE member_price IS NULL AND retail_price IS NOT NULL;
 -- ============================================
 -- 初始化药品价格数据（从 drug_info 同步）
 -- ============================================
+-- 初始化数据（使用 REPLACE 去掉连字符，生成 32 位）
 INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price, operator, update_time)
-SELECT UUID(), drug_id, purchase_price, retail_price, member_price, '系统初始化', NOW()
-FROM drug_info
-WHERE status = 1
-AND NOT EXISTS (SELECT 1 FROM drug_price WHERE drug_price.drug_id = drug_info.drug_id);
-
-
+SELECT REPLACE(UUID(), '-', ''), drug_id, purchase_price, retail_price,
+       IFNULL(member_price, ROUND(retail_price * 0.95, 2)), '系统初始化', NOW()
+FROM drug_info WHERE status = 1;

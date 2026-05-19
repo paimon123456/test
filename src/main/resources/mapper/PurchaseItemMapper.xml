@@ -2,19 +2,27 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.drug.mapper.PurchaseItemMapper">
 
-    <!-- 根据订单ID删除所有明细 -->
-    <delete id="deleteByOrderId">
-        DELETE FROM purchase_item WHERE order_id = #{orderId}
-    </delete>
+    <!-- 查询采购订单明细 -->
+    <select id="selectItemsByOrderId" resultType="com.example.drug.entity.purchase.PurchaseItem">
+        SELECT 
+            pi.*,
+            d.drug_name as drug_name,
+            d.specification as specification,
+            d.batch_no as batch_no
+        FROM purchase_item pi
+        LEFT JOIN drug_info d ON pi.drug_id = d.drug_id
+        WHERE pi.order_id = #{orderId}
+    </select>
 
-    <!-- 批量插入明细 -->
+    <!-- 批量插入采购明细 -->
     <insert id="batchInsert" parameterType="java.util.List">
         INSERT INTO purchase_item (item_id, order_id, drug_id, purchase_num, purchase_price, subtotal, 
-            received_num, pending_num, status)
+            received_num, pending_num, batch_no, production_date, expiry_date, status)
         VALUES
         <foreach collection="items" item="item" separator=",">
-            (#{item.itemId}, #{item.orderId}, #{item.drugId}, #{item.purchaseNum}, #{item.purchasePrice}, 
-             #{item.subtotal}, #{item.receivedNum}, #{item.pendingNum}, #{item.status})
+            (#{item.itemId}, #{item.orderId}, #{item.drugId}, #{item.purchaseNum}, #{item.purchasePrice},
+             #{item.subtotal}, #{item.receivedNum}, #{item.pendingNum}, #{item.batchNo},
+             #{item.productionDate}, #{item.expiryDate}, #{item.status})
         </foreach>
     </insert>
 
