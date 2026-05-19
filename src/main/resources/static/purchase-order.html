@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>销售订单查询</title>
+    <title>采购订单查询</title>
     <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.13/lib/theme-chalk/index.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,36 +13,36 @@
         .page-header .subtitle { font-size: 14px; color: #909399; margin-top: 5px; }
         .search-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
         .search-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 16px; display: flex; align-items: center; }
-        .search-title::before { content: ''; width: 4px; height: 16px; background: #409eff; margin-right: 8px; border-radius: 2px; }
+        .search-title::before { content: ''; width: 4px; height: 16px; background: #67c23a; margin-right: 8px; border-radius: 2px; }
         .search-form { display: flex; flex-wrap: wrap; gap: 12px; }
         .search-item { display: flex; align-items: center; }
         .search-item label { font-size: 14px; color: #606266; margin-right: 8px; white-space: nowrap; }
         .data-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
         .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .table-title { font-size: 16px; font-weight: 600; color: #303133; display: flex; align-items: center; }
-        .table-title::before { content: ''; width: 4px; height: 16px; background: #67c23a; margin-right: 8px; border-radius: 2px; }
+        .table-title::before { content: ''; width: 4px; height: 16px; background: #409eff; margin-right: 8px; border-radius: 2px; }
         .stats-row { display: flex; gap: 16px; margin-bottom: 16px; }
-        .stat-card { flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 16px; border-radius: 8px; }
+        .stat-card { flex: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; padding: 16px; border-radius: 8px; }
         .stat-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-        .stat-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .stat-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .stat-card.orange { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
         .stat-label { font-size: 14px; opacity: 0.9; }
         .stat-value { font-size: 24px; font-weight: 600; margin-top: 8px; }
         .el-table { border-radius: 8px; overflow: hidden; }
         .el-table th { background-color: #f5f7fa !important; color: #606266; font-weight: 600; }
         .el-table--enable-row-hover .el-table__body tr:hover { cursor: pointer; background-color: #ecf5ff; }
         .status-tag { padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+        .status-pending { background: #fdf6ec; color: #e6a23c; border: 1px solid #faecd8; }
+        .status-approved { background: #ecf5ff; color: #409eff; border: 1px solid #d9ecff; }
         .status-success { background: #f0f9ff; color: #67c23a; border: 1px solid #e1f3d8; }
-        .status-warning { background: #fdf6ec; color: #e6a23c; border: 1px solid #faecd8; }
         .status-info { background: #f4f4f5; color: #909399; border: 1px solid #e9e9eb; }
         .status-danger { background: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2; }
         .order-type { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-        .type-sales { background: #ecf5ff; color: #409eff; }
         .type-purchase { background: #f0f9ff; color: #67c23a; }
         .pagination-wrapper { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
         .page-size-select { display: flex; align-items: center; gap: 8px; }
         .detail-section { margin-bottom: 24px; }
-        .detail-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 12px; display: flex; align-items: center; border-bottom: 2px solid #409eff; padding-bottom: 8px; }
+        .detail-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 12px; display: flex; align-items: center; border-bottom: 2px solid #67c23a; padding-bottom: 8px; }
         .detail-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
         .info-item { display: flex; padding: 8px 0; }
         .info-label { color: #909399; width: 100px; flex-shrink: 0; }
@@ -51,8 +51,9 @@
         .timeline-item { display: flex; margin-bottom: 20px; position: relative; }
         .timeline-item::before { content: ''; position: absolute; left: 11px; top: 30px; bottom: -20px; width: 2px; background: #e4e7ed; }
         .timeline-item:last-child::before { display: none; }
-        .timeline-dot { width: 24px; height: 24px; border-radius: 50%; background: #409eff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; z-index: 1; }
-        .timeline-dot.active { background: #67c23a; }
+        .timeline-dot { width: 24px; height: 24px; border-radius: 50%; background: #67c23a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; z-index: 1; }
+        .timeline-dot.active { background: #409eff; }
+        .timeline-dot.pending { background: #e6a23c; }
         .timeline-content { margin-left: 16px; flex: 1; }
         .timeline-time { color: #909399; font-size: 12px; }
         .timeline-title { color: #303133; font-weight: 500; margin: 4px 0; }
@@ -73,8 +74,8 @@
 <div id="app">
     <div class="container">
         <div class="page-header">
-            <h2>销售订单查询</h2>
-            <div class="subtitle">支持订单号、会员、药品等多条件组合查询</div>
+            <h2>采购订单查询</h2>
+            <div class="subtitle">支持订单号、供应商、药品等多条件组合查询</div>
         </div>
 
         <div class="search-card">
@@ -85,12 +86,12 @@
                     <el-input v-model="searchForm.orderId" placeholder="支持模糊匹配" clearable style="width: 180px;"></el-input>
                 </div>
                 <div class="search-item">
-                    <label>会员信息：</label>
-                    <el-input v-model="searchForm.memberId" placeholder="姓名/卡号/手机号" clearable style="width: 150px;"></el-input>
+                    <label>供应商：</label>
+                    <el-input v-model="searchForm.supplierId" placeholder="名称/编号" clearable style="width: 150px;"></el-input>
                 </div>
                 <div class="search-item">
-                    <label>收银员：</label>
-                    <el-input v-model="searchForm.cashierId" placeholder="姓名" clearable style="width: 120px;"></el-input>
+                    <label>采购员：</label>
+                    <el-input v-model="searchForm.purchaserId" placeholder="姓名" clearable style="width: 120px;"></el-input>
                 </div>
                 <div class="search-item">
                     <label>药品：</label>
@@ -99,8 +100,9 @@
                 <div class="search-item">
                     <label>状态：</label>
                     <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px;">
+                        <el-option label="待审核" value="待审核"></el-option>
+                        <el-option label="已审核" value="已审核"></el-option>
                         <el-option label="已完成" value="已完成"></el-option>
-                        <el-option label="已退货" value="已退货"></el-option>
                         <el-option label="已取消" value="已取消"></el-option>
                     </el-select>
                 </div>
@@ -126,11 +128,11 @@
                     <div class="stat-value">{{ completedCount }}</div>
                 </div>
                 <div class="stat-card orange">
-                    <div class="stat-label">已退货</div>
-                    <div class="stat-value">{{ returnedCount }}</div>
+                    <div class="stat-label">待审核</div>
+                    <div class="stat-value">{{ pendingCount }}</div>
                 </div>
                 <div class="stat-card blue">
-                    <div class="stat-label">订单总额</div>
+                    <div class="stat-label">采购总额</div>
                     <div class="stat-value">¥{{ totalAmount.toFixed(2) }}</div>
                 </div>
             </div>
@@ -143,21 +145,18 @@
                 <el-table-column prop="orderId" label="订单号" width="180" fixed></el-table-column>
                 <el-table-column prop="orderType" label="类型" width="80">
                     <template slot-scope="scope">
-                        <span class="order-type type-sales">销售</span>
+                        <span class="order-type type-purchase">采购</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="memberName" label="客户" width="120">
+                <el-table-column prop="supplierName" label="供应商" width="180">
                     <template slot-scope="scope">
-                        <span>{{ scope.row.memberName || '散客' }}</span>
-                        <div style="font-size: 12px; color: #909399;">{{ scope.row.memberPhone || '' }}</div>
+                        <span>{{ scope.row.supplierName || '-' }}</span>
+                        <div style="font-size: 12px; color: #909399;">{{ scope.row.supplierPhone || '' }}</div>
                     </template>
                 </el-table-column>
-                <el-table-column prop="cardNo" label="卡号" width="120">
-                    <template slot-scope="scope">{{ scope.row.cardNo || '-' }}</template>
-                </el-table-column>
-                <el-table-column prop="cashierName" label="收银员" width="100"></el-table-column>
+                <el-table-column prop="purchaserName" label="采购员" width="100"></el-table-column>
                 <el-table-column prop="totalNum" label="数量" width="80" align="center"></el-table-column>
-                <el-table-column prop="totalAmount" label="应收" width="100" align="right">
+                <el-table-column prop="totalAmount" label="应付" width="100" align="right">
                     <template slot-scope="scope">
                         <span class="amount">¥{{ scope.row.totalAmount }}</span>
                     </template>
@@ -167,7 +166,7 @@
                         <span class="amount-green">-¥{{ scope.row.discount || 0 }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="payAmount" label="实收" width="100" align="right">
+                <el-table-column prop="payAmount" label="实付" width="100" align="right">
                     <template slot-scope="scope">
                         <span class="amount amount-red">¥{{ scope.row.payAmount }}</span>
                     </template>
@@ -178,6 +177,9 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="orderTime" label="下单时间" width="160"></el-table-column>
+                <el-table-column prop="reviewerName" label="审核人" width="100">
+                    <template slot-scope="scope">{{ scope.row.reviewerName || '-' }}</template>
+                </el-table-column>
                 <el-table-column prop="status" label="状态" width="100" align="center">
                     <template slot-scope="scope">
                         <span :class="getStatusClass(scope.row.status)">{{ scope.row.status }}</span>
@@ -214,7 +216,7 @@
         </div>
     </div>
 
-    <el-dialog title="订单详情" :visible.sync="detailDialogVisible" width="70%" top="5vh">
+    <el-dialog title="采购订单详情" :visible.sync="detailDialogVisible" width="70%" top="5vh">
         <div v-if="currentOrder">
             <el-tabs v-model="activeTab">
                 <el-tab-pane label="订单信息" name="info">
@@ -227,23 +229,23 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">订单类型：</div>
-                                <div class="info-value"><span class="order-type type-sales">销售订单</span></div>
+                                <div class="info-value"><span class="order-type type-purchase">采购订单</span></div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">客户姓名：</div>
-                                <div class="info-value">{{ currentOrder.memberName || '散客' }}</div>
+                                <div class="info-label">供应商：</div>
+                                <div class="info-value">{{ currentOrder.supplierName || '-' }}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">会员卡号：</div>
-                                <div class="info-value">{{ currentOrder.cardNo || '-' }}</div>
+                                <div class="info-label">联系人：</div>
+                                <div class="info-value">{{ currentOrder.supplierContact || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">联系电话：</div>
-                                <div class="info-value">{{ currentOrder.memberPhone || '-' }}</div>
+                                <div class="info-value">{{ currentOrder.supplierPhone || '-' }}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">收银员：</div>
-                                <div class="info-value">{{ currentOrder.cashierName || '-' }}</div>
+                                <div class="info-label">采购员：</div>
+                                <div class="info-value">{{ currentOrder.purchaserName || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">下单时间：</div>
@@ -254,8 +256,24 @@
                                 <div class="info-value">{{ currentOrder.payType || '-' }}</div>
                             </div>
                             <div class="info-item">
+                                <div class="info-label">审核人：</div>
+                                <div class="info-value">{{ currentOrder.reviewerName || '-' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">审核时间：</div>
+                                <div class="info-value">{{ currentOrder.reviewTime || '-' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">审核意见：</div>
+                                <div class="info-value">{{ currentOrder.reviewRemark || '-' }}</div>
+                            </div>
+                            <div class="info-item">
                                 <div class="info-label">订单状态：</div>
                                 <div class="info-value"><span :class="getStatusClass(currentOrder.status)">{{ currentOrder.status }}</span></div>
+                            </div>
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <div class="info-label">备注：</div>
+                                <div class="info-value">{{ currentOrder.remark || '-' }}</div>
                             </div>
                         </div>
                     </div>
@@ -268,7 +286,7 @@
                                 <div class="info-value">{{ currentOrder.totalNum }} 件</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">应收金额：</div>
+                                <div class="info-label">应付金额：</div>
                                 <div class="info-value amount">¥{{ currentOrder.totalAmount }}</div>
                             </div>
                             <div class="info-item">
@@ -276,7 +294,7 @@
                                 <div class="info-value amount-green">-¥{{ currentOrder.discount || 0 }}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">实收金额：</div>
+                                <div class="info-label">实付金额：</div>
                                 <div class="info-value amount amount-red">¥{{ currentOrder.payAmount }}</div>
                             </div>
                         </div>
@@ -288,13 +306,13 @@
                         <el-table-column prop="drugName" label="药品名称" min-width="150"></el-table-column>
                         <el-table-column prop="specification" label="规格" width="120"></el-table-column>
                         <el-table-column prop="batchNo" label="生产批号" width="140"></el-table-column>
-                        <el-table-column prop="saleNum" label="数量" width="80" align="center"></el-table-column>
-                        <el-table-column prop="salePrice" label="单价" width="100" align="right">
-                            <template slot-scope="scope">¥{{ scope.row.salePrice }}</template>
+                        <el-table-column prop="purchaseNum" label="数量" width="80" align="center"></el-table-column>
+                        <el-table-column prop="purchasePrice" label="单价" width="100" align="right">
+                            <template slot-scope="scope">¥{{ scope.row.purchasePrice }}</template>
                         </el-table-column>
                         <el-table-column label="小计金额" width="120" align="right">
                             <template slot-scope="scope">
-                                <span class="amount amount-red">¥{{ (scope.row.saleNum * scope.row.salePrice).toFixed(2) }}</span>
+                                <span class="amount amount-red">¥{{ (scope.row.purchaseNum * scope.row.purchasePrice).toFixed(2) }}</span>
                             </template>
                         </el-table-column>
                     </el-table>
@@ -307,7 +325,23 @@
                             <div class="timeline-content">
                                 <div class="timeline-time">{{ currentOrder.orderTime }}</div>
                                 <div class="timeline-title">订单创建</div>
-                                <div class="timeline-desc">收银员 {{ currentOrder.cashierName || '未知' }} 创建销售订单</div>
+                                <div class="timeline-desc">采购员 {{ currentOrder.purchaserName || '未知' }} 创建采购订单</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item" v-if="currentOrder.status === '待审核'">
+                            <div class="timeline-dot pending">⏳</div>
+                            <div class="timeline-content">
+                                <div class="timeline-time">-</div>
+                                <div class="timeline-title">等待审核</div>
+                                <div class="timeline-desc">订单待管理员审核</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item" v-if="currentOrder.status === '已审核' || currentOrder.status === '已完成'">
+                            <div class="timeline-dot active">✓</div>
+                            <div class="timeline-content">
+                                <div class="timeline-time">{{ currentOrder.reviewTime || '-' }}</div>
+                                <div class="timeline-title">审核通过</div>
+                                <div class="timeline-desc">审核人 {{ currentOrder.reviewerName || '未知' }} 审核通过{{ currentOrder.reviewRemark ? '，意见：' + currentOrder.reviewRemark : '' }}</div>
                             </div>
                         </div>
                         <div class="timeline-item" v-if="currentOrder.status === '已完成'">
@@ -315,23 +349,15 @@
                             <div class="timeline-content">
                                 <div class="timeline-time">{{ currentOrder.orderTime }}</div>
                                 <div class="timeline-title">订单完成</div>
-                                <div class="timeline-desc">订单已完成支付</div>
-                            </div>
-                        </div>
-                        <div class="timeline-item" v-if="currentOrder.status === '已退货'">
-                            <div class="timeline-dot">↩</div>
-                            <div class="timeline-content">
-                                <div class="timeline-time">-</div>
-                                <div class="timeline-title">订单退货</div>
-                                <div class="timeline-desc">订单已退货处理</div>
+                                <div class="timeline-desc">采购已完成，药品已入库</div>
                             </div>
                         </div>
                         <div class="timeline-item" v-if="currentOrder.status === '已取消'">
-                            <div class="timeline-dot">✕</div>
+                            <div class="timeline-dot" style="background: #f56c6c;">✕</div>
                             <div class="timeline-content">
                                 <div class="timeline-time">-</div>
                                 <div class="timeline-title">订单取消</div>
-                                <div class="timeline-desc">订单已取消</div>
+                                <div class="timeline-desc">订单已取消{{ currentOrder.reviewRemark ? '，原因：' + currentOrder.reviewRemark : '' }}</div>
                             </div>
                         </div>
                     </div>
@@ -358,11 +384,11 @@ new Vue({
         total: 0,
         totalAmount: 0,
         completedCount: 0,
-        returnedCount: 0,
+        pendingCount: 0,
         searchForm: {
             orderId: '',
-            memberId: '',
-            cashierId: '',
+            supplierId: '',
+            purchaserId: '',
             drugName: '',
             status: ''
         },
@@ -380,8 +406,8 @@ new Vue({
             this.loading = true;
             const params = {
                 orderId: this.searchForm.orderId,
-                memberId: this.searchForm.memberId,
-                cashierId: this.searchForm.cashierId,
+                supplierId: this.searchForm.supplierId,
+                purchaserId: this.searchForm.purchaserId,
                 status: this.searchForm.status,
                 drugName: this.searchForm.drugName,
                 pageNum: this.pageNum,
@@ -393,7 +419,7 @@ new Vue({
                 params.endDate = this.dateRange[1];
             }
 
-            axios.get('/sales/order/list', { params })
+            axios.get('/purchase/order/list', { params })
                 .then(res => {
                     if (res.data.code === 200) {
                         this.tableData = res.data.data.records || [];
@@ -410,7 +436,7 @@ new Vue({
         
         calculateStats() {
             this.completedCount = this.tableData.filter(item => item.status === '已完成').length;
-            this.returnedCount = this.tableData.filter(item => item.status === '已退货').length;
+            this.pendingCount = this.tableData.filter(item => item.status === '待审核').length;
             this.totalAmount = this.tableData.reduce((sum, item) => {
                 return sum + (parseFloat(item.payAmount) || 0);
             }, 0);
@@ -419,16 +445,30 @@ new Vue({
         viewDetail(row) {
             this.currentOrder = row;
             this.activeTab = 'info';
-            axios.get(`/sales/order/${row.orderId}`)
+            axios.get(`/purchase/order/${row.orderId}`)
                 .then(res => {
                     if (res.data.code === 200) {
-                        this.currentOrder = res.data.data.order;
-                        this.orderItems = res.data.data.items || [];
+                        this.currentOrder = res.data.data;
+                        this.loadOrderItems(row.orderId);
                         this.detailDialogVisible = true;
                     }
                 })
                 .catch(() => {
                     this.$message.error('加载订单详情失败');
+                });
+        },
+
+        loadOrderItems(orderId) {
+            // 采购订单明细加载
+            this.orderItems = [];
+            axios.get(`/purchase/item/list?orderId=${orderId}`)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        this.orderItems = res.data.data || [];
+                    }
+                })
+                .catch(() => {
+                    console.log('明细加载失败');
                 });
         },
 
@@ -440,8 +480,8 @@ new Vue({
         reset() {
             this.searchForm = {
                 orderId: '',
-                memberId: '',
-                cashierId: '',
+                supplierId: '',
+                purchaserId: '',
                 drugName: '',
                 status: ''
             };
@@ -463,8 +503,9 @@ new Vue({
 
         getStatusClass(status) {
             const map = {
+                '待审核': 'status-tag status-pending',
+                '已审核': 'status-tag status-approved',
                 '已完成': 'status-tag status-success',
-                '已退货': 'status-tag status-warning',
                 '已取消': 'status-tag status-info'
             };
             return map[status] || 'status-tag';

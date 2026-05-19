@@ -232,7 +232,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public Result list(String orderNo, String supplierId, String status, String startDate, 
                        String endDate, Integer pageNum, Integer pageSize) {
         List<PurchaseOrder> orders = purchaseOrderMapper.selectPurchaseOrderList(
-                orderNo, supplierId, status, startDate, endDate);
+                orderNo, supplierId, null, status, null, startDate, endDate);
         
         // 分页处理
         int total = orders.size();
@@ -296,7 +296,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     @Override
     public Result getPurchaseHistoryBySupplier(String supplierId, Integer pageNum, Integer pageSize) {
         List<PurchaseOrder> orders = purchaseOrderMapper.selectPurchaseOrderList(
-                null, supplierId, null, null, null);
+                null, supplierId, null, null, null, null, null);
         
         int total = orders.size();
         int fromIndex = (pageNum - 1) * pageSize;

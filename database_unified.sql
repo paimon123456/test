@@ -674,14 +674,14 @@ INSERT INTO purchase_item (item_id, order_id, drug_id, purchase_num, purchase_pr
 
 -- 插入采购入库单
 INSERT INTO purchase_in (in_id, in_no, order_id, supplier_id, operator_id, warehouse_id, total_amount, status, in_time) VALUES
-('in001', 'IN20240508001', 'po001', 'sup001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
-('in002', 'IN20240512001', 'po002', 'sup002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
+('IN001', 'IN20240508001', 'PO001', 'S001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
+('IN002', 'IN20240512001', 'PO002', 'S002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
 
 -- 插入入库明细
 INSERT INTO purchase_in_item (in_item_id, in_id, item_id, drug_id, batch_no, production_date, expiry_date, 
     in_num, purchase_price, subtotal, warehouse_id, location, operator_id) VALUES
-('ini001', 'in001', 'pi001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
-('ini002', 'in002', 'pi002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
+('INI001', 'IN001', 'PI001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
+('INI002', 'IN002', 'PI002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
 
 -- ============================================
 -- 【新增】测试数据 - 会员、销售订单、盘点、退货
@@ -729,52 +729,8 @@ WHERE member_price IS NULL AND retail_price IS NOT NULL;
 -- ============================================
 -- 初始化药品价格数据（从 drug_info 同步）
 -- ============================================
-INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price, operator, update_time)
-SELECT UUID(), drug_id, purchase_price, retail_price, member_price, '系统初始化', NOW()
-FROM drug_info
-WHERE status = 1
-AND NOT EXISTS (SELECT 1 FROM drug_price WHERE drug_price.drug_id = drug_info.drug_id);
-
--- 1. 删除表重建（使用正确的字段长度）
-DROP TABLE IF EXISTS drug_price;
-
-CREATE TABLE drug_price (
-                            price_id VARCHAR(36) NOT NULL COMMENT '价格ID' PRIMARY KEY,
-                            drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
-                            purchase_price DECIMAL(10,2) NOT NULL COMMENT '采购价',
-                            retail_price DECIMAL(10,2) NOT NULL COMMENT '零售价',
-                            member_price DECIMAL(10,2) COMMENT '会员价',
-                            promo_price DECIMAL(10,2) COMMENT '促销价',
-                            promo_start DATETIME COMMENT '促销开始时间',
-                            promo_end DATETIME COMMENT '促销结束时间',
-                            operator VARCHAR(50) NOT NULL COMMENT '操作人',
-                            update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                            KEY idx_drug (drug_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 2. 初始化数据（使用 REPLACE 去掉连字符，生成 32 位）
+-- 初始化数据（使用 REPLACE 去掉连字符，生成 32 位）
 INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price, operator, update_time)
 SELECT REPLACE(UUID(), '-', ''), drug_id, purchase_price, retail_price,
        IFNULL(member_price, ROUND(retail_price * 0.95, 2)), '系统初始化', NOW()
 FROM drug_info WHERE status = 1;
-
--- 3. 同样处理 price_history 表（如果有的话）
-DROP TABLE IF EXISTS price_history;
-
-CREATE TABLE price_history (
-                               history_id VARCHAR(36) NOT NULL COMMENT '历史ID' PRIMARY KEY,
-                               drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
-                               price_type VARCHAR(20) NOT NULL COMMENT '价格类型',
-                               old_price DECIMAL(10,2) NOT NULL COMMENT '原价',
-                               new_price DECIMAL(10,2) NOT NULL COMMENT '新价',
-                               change_rate DECIMAL(10,4) COMMENT '变动幅度',
-                               adjust_type VARCHAR(20) COMMENT '调整类型',
-                               batch_no VARCHAR(50) COMMENT '批次号',
-                               effective_date DATE COMMENT '生效日期',
-                               reason VARCHAR(500) COMMENT '调整原因',
-                               operator VARCHAR(50) NOT NULL COMMENT '操作人',
-                               create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                               KEY idx_drug (drug_id),
-                               KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-

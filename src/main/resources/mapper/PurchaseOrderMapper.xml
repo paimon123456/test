@@ -2,12 +2,14 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.drug.mapper.PurchaseOrderMapper">
 
-    <!-- 查询采购订单列表 -->
+    <!-- 查询采购订单列表（多条件组合查询） -->
     <select id="selectPurchaseOrderList" resultType="com.example.drug.entity.purchase.PurchaseOrder">
-        SELECT 
+        SELECT DISTINCT
             po.*,
             s.supplier_name,
             s.supplier_code,
+            s.contact as supplier_contact,
+            s.phone as supplier_phone,
             w.warehouse_name,
             u1.real_name as operator_name,
             u2.real_name as auditor_name
@@ -16,15 +18,23 @@
         LEFT JOIN warehouse w ON po.warehouse_id = w.warehouse_id
         LEFT JOIN sys_user u1 ON po.operator_id = u1.user_id
         LEFT JOIN sys_user u2 ON po.auditor_id = u2.user_id
+        LEFT JOIN purchase_item pi ON po.order_id = pi.order_id
+        LEFT JOIN drug_info d ON pi.drug_id = d.drug_id
         <where>
             <if test="orderNo != null and orderNo != ''">
                 AND po.order_no LIKE CONCAT('%', #{orderNo}, '%')
             </if>
             <if test="supplierId != null and supplierId != ''">
-                AND po.supplier_id = #{supplierId}
+                AND (po.supplier_id = #{supplierId} OR s.supplier_name LIKE CONCAT('%', #{supplierId}, '%'))
+            </if>
+            <if test="operatorId != null and operatorId != ''">
+                AND (po.operator_id = #{operatorId} OR u1.real_name LIKE CONCAT('%', #{operatorId}, '%'))
             </if>
             <if test="status != null and status != ''">
                 AND po.status = #{status}
+            </if>
+            <if test="drugName != null and drugName != ''">
+                AND d.drug_name LIKE CONCAT('%', #{drugName}, '%')
             </if>
             <if test="startDate != null and startDate != ''">
                 AND po.create_time &gt;= #{startDate}

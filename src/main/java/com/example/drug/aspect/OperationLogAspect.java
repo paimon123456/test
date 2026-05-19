@@ -1,5 +1,6 @@
 package com.example.drug.aspect;
 
+import com.example.drug.common.UUIDUtil;
 import com.example.drug.entity.OperationLog;
 import com.example.drug.service.OperationLogService;
 import org.aspectj.lang.JoinPoint;
@@ -28,9 +29,10 @@ public class OperationLogAspect {
     public void doAfterReturning(JoinPoint joinPoint, Object result) {
         try {
             OperationLog log = new OperationLog();
-            log.setOperation(joinPoint.getSignature().getDeclaringTypeName() + "." + joinPoint.getSignature().getName());
-            log.setMethod(joinPoint.getSignature().getName());
-            log.setParams(java.util.Arrays.toString(joinPoint.getArgs()));
+            log.setLogId(UUIDUtil.getUUID());
+            log.setModule(joinPoint.getSignature().getDeclaringType().getSimpleName());
+            log.setType(joinPoint.getSignature().getName());
+            log.setContent(java.util.Arrays.toString(joinPoint.getArgs()));
             log.setCreateTime(new Date());
 
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -38,12 +40,15 @@ public class OperationLogAspect {
                 HttpServletRequest request = attributes.getRequest();
                 log.setIp(request.getRemoteAddr());
                 // 可以从 session 中获取当前登录用户
-                Object adminName = request.getSession().getAttribute("adminName");
-                log.setAdminName(adminName != null ? adminName.toString() : "未知用户");
+                Object userId = request.getSession().getAttribute("userId");
+                Object username = request.getSession().getAttribute("username");
+                log.setUserId(userId != null ? userId.toString() : "");
+                log.setUsername(username != null ? username.toString() : "未知用户");
             }
 
             operationLogService.save(log);
         } catch (Exception e) {
+
             e.printStackTrace();
         }
     }
