@@ -1,31 +1,31 @@
 package com.example.drug.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.drug.entity.OperationLog;
+import com.example.drug.entity.ExceptionLog;
 import com.example.drug.util.Result;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
 
-public interface OperationLogService extends IService<OperationLog> {
+public interface ExceptionLogService extends IService<ExceptionLog> {
     
     /**
-     * 分页查询操作日志
+     * 分页查询异常日志
      */
     Result queryLogs(Map<String, Object> params);
     
     /**
-     * 导出操作日志Excel
+     * 导出异常日志Excel
      */
     void exportExcel(Map<String, Object> params, HttpServletResponse response);
     
     /**
-     * 清理操作日志
+     * 清理异常日志
      */
     Result cleanLogs(String startDate, String endDate, String operator);
     
     /**
-     * 自动清理过期日志（保留最近N个月）
+     * 获取异常详情
      */
-    int autoCleanLogs(int retainMonths);
+    Result getDetail(String exceptionId);
 }

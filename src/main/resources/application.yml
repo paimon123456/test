@@ -37,3 +37,8 @@ pagehelper:
 logging:
   level:
     com.example.drug.mapper: debug
+
+# 日志保留策略配置（操作日志和异常日志自动清理）
+log:
+  retain:
+    months: 6

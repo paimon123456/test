@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统日志管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.13/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif; background: #f0f2f5; }
+        .container { padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-header h2 { font-size: 24px; color: #303133; font-weight: 600; }
+        .page-header .subtitle { font-size: 14px; color: #909399; margin-top: 5px; }
+        .search-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        .search-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 16px; display: flex; align-items: center; }
+        .search-title::before { content: ''; width: 4px; height: 16px; background: #409eff; margin-right: 8px; border-radius: 2px; }
+        .search-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .search-item { display: flex; align-items: center; }
+        .search-item label { font-size: 14px; color: #606266; margin-right: 8px; white-space: nowrap; }
+        .data-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .table-title { font-size: 16px; font-weight: 600; color: #303133; display: flex; align-items: center; }
+        .table-title::before { content: ''; width: 4px; height: 16px; background: #67c23a; margin-right: 8px; border-radius: 2px; }
+        .el-table th { background-color: #f5f7fa !important; color: #606266; font-weight: 600; }
+        .pagination-wrapper { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .result-success { color: #67c23a; font-weight: 600; }
+        .result-fail { color: #f56c6c; font-weight: 600; }
+        .content-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .stack-detail { background: #f5f7fa; padding: 16px; border-radius: 4px; font-size: 12px; line-height: 1.8; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; }
+        .cleanup-warning { color: #e6a23c; font-size: 14px; padding: 12px; background: #fdf6ec; border-radius: 4px; margin-bottom: 16px; border: 1px solid #faecd8; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="page-header">
+            <h2>系统日志管理</h2>
+            <div class="subtitle">操作日志记录与查询 | 异常日志追踪 | 日志清理</div>
+        </div>
+
+        <el-tabs v-model="activeTab" @tab-click="handleTabChange">
+            <!-- ==================== 操作日志 ==================== -->
+            <el-tab-pane label="操作日志" name="operation">
+                <div class="search-card">
+                    <div class="search-title">查询条件</div>
+                    <div class="search-form">
+                        <div class="search-item">
+                            <label>操作人：</label>
+                            <el-input v-model="opSearch.username" placeholder="输入操作人" clearable style="width: 140px;"></el-input>
+                        </div>
+                        <div class="search-item">
+                            <label>操作模块：</label>
+                            <el-select v-model="opSearch.module" placeholder="全部模块" clearable style="width: 140px;">
+                                <el-option label="用户管理" value="用户管理"></el-option>
+                                <el-option label="角色管理" value="角色管理"></el-option>
+                                <el-option label="药品管理" value="药品管理"></el-option>
+                                <el-option label="供应商管理" value="供应商管理"></el-option>
+                                <el-option label="采购管理" value="采购管理"></el-option>
+                                <el-option label="销售管理" value="销售管理"></el-option>
+                                <el-option label="库存管理" value="库存管理"></el-option>
+                                <el-option label="仓库管理" value="仓库管理"></el-option>
+                                <el-option label="价格管理" value="价格管理"></el-option>
+                                <el-option label="效期管理" value="效期管理"></el-option>
+                                <el-option label="报表统计" value="报表统计"></el-option>
+                                <el-option label="系统日志" value="系统日志"></el-option>
+                            </el-select>
+                        </div>
+                        <div class="search-item">
+                            <label>操作类型：</label>
+                            <el-select v-model="opSearch.type" placeholder="全部类型" clearable style="width: 120px;">
+                                <el-option label="新增" value="新增"></el-option>
+                                <el-option label="修改" value="修改"></el-option>
+                                <el-option label="删除" value="删除"></el-option>
+                                <el-option label="查询" value="查询"></el-option>
+                                <el-option label="导出" value="导出"></el-option>
+                                <el-option label="导入" value="导入"></el-option>
+                                <el-option label="审核" value="审核"></el-option>
+                                <el-option label="登录" value="登录"></el-option>
+                            </el-select>
+                        </div>
+                        <div class="search-item">
+                            <label>执行结果：</label>
+                            <el-select v-model="opSearch.result" placeholder="全部" clearable style="width: 100px;">
+                                <el-option label="成功" value="成功"></el-option>
+                                <el-option label="失败" value="失败"></el-option>
+                            </el-select>
+                        </div>
+                        <div class="search-item">
+                            <label>时间范围：</label>
+                            <el-date-picker v-model="opSearch.dateRange" type="daterange" range-separator="至"
+                                start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width: 260px;">
+                            </el-date-picker>
+                        </div>
+                        <div class="search-item" style="gap: 8px; display: flex;">
+                            <el-button type="primary" icon="el-icon-search" @click="searchOpLogs">查询</el-button>
+                            <el-button icon="el-icon-refresh" @click="resetOpSearch">重置</el-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div class="table-header">
+                        <div class="table-title">操作日志列表（共 {{ opTotal }} 条）</div>
+                        <div>
+                            <el-button type="success" icon="el-icon-download" size="small" @click="exportOpLogs">导出Excel</el-button>
+                            <el-button type="danger" icon="el-icon-delete" size="small" @click="showOpCleanDialog">清理日志</el-button>
+                        </div>
+                    </div>
+
+                    <el-table :data="opTableData" border v-loading="opLoading" stripe max-height="500">
+                        <el-table-column prop="username" label="操作人" width="100"></el-table-column>
+                        <el-table-column prop="module" label="操作模块" width="100"></el-table-column>
+                        <el-table-column prop="type" label="操作类型" width="80" align="center">
+                            <template slot-scope="scope">
+                                <el-tag :type="typeTag(scope.row.type)" size="small">{{ scope.row.type }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="content" label="操作内容" min-width="220" show-overflow-tooltip></el-table-column>
+                        <el-table-column prop="result" label="执行结果" width="80" align="center">
+                            <template slot-scope="scope">
+                                <span :class="scope.row.result === '成功' ? 'result-success' : 'result-fail'">
+                                    {{ scope.row.result }}
+                                </span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="ip" label="IP地址" width="130"></el-table-column>
+                        <el-table-column prop="createTime" label="操作时间" width="160">
+                            <template slot-scope="scope">
+                                {{ formatTime(scope.row.createTime) }}
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <div class="pagination-wrapper">
+                        <span style="color: #909399; font-size: 13px;">共 {{ opTotal }} 条记录</span>
+                        <el-pagination background layout="prev, pager, next, jumper, sizes, total"
+                            :total="opTotal" :page-size="opPageSize" :current-page.sync="opPageNum"
+                            :page-sizes="[10, 20, 50, 100]"
+                            @current-change="handleOpPageChange" @size-change="handleOpSizeChange">
+                        </el-pagination>
+                    </div>
+                </div>
+
+                <!-- 清理操作日志对话框 -->
+                <el-dialog title="清理操作日志" :visible.sync="opCleanVisible" width="500px">
+                    <div class="cleanup-warning">
+                        <i class="el-icon-warning"></i>
+                        清理操作将永久删除指定时间范围内的操作日志，此操作不可恢复！清理操作本身会被记录。
+                    </div>
+                    <el-form label-width="100px">
+                        <el-form-item label="起始日期">
+                            <el-date-picker v-model="opCleanForm.startDate" type="date" placeholder="选择起始日期"
+                                value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+                        </el-form-item>
+                        <el-form-item label="截止日期">
+                            <el-date-picker v-model="opCleanForm.endDate" type="date" placeholder="选择截止日期"
+                                value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="opCleanVisible = false">取消</el-button>
+                        <el-button type="danger" @click="executeOpClean" :loading="opCleaning">确认清理</el-button>
+                    </span>
+                </el-dialog>
+            </el-tab-pane>
+
+            <!-- ==================== 异常日志 ==================== -->
+            <el-tab-pane label="异常日志" name="exception">
+                <div class="search-card">
+                    <div class="search-title">查询条件</div>
+                    <div class="search-form">
+                        <div class="search-item">
+                            <label>操作人：</label>
+                            <el-input v-model="exSearch.username" placeholder="输入操作人" clearable style="width: 140px;"></el-input>
+                        </div>
+                        <div class="search-item">
+                            <label>异常类型：</label>
+                            <el-input v-model="exSearch.exceptionType" placeholder="如 NullPointerException" clearable style="width: 200px;"></el-input>
+                        </div>
+                        <div class="search-item">
+                            <label>时间范围：</label>
+                            <el-date-picker v-model="exSearch.dateRange" type="daterange" range-separator="至"
+                                start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width: 260px;">
+                            </el-date-picker>
+                        </div>
+                        <div class="search-item" style="gap: 8px; display: flex;">
+                            <el-button type="primary" icon="el-icon-search" @click="searchExLogs">查询</el-button>
+                            <el-button icon="el-icon-refresh" @click="resetExSearch">重置</el-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div class="table-header">
+                        <div class="table-title">异常日志列表（共 {{ exTotal }} 条）</div>
+                        <div>
+                            <el-button type="success" icon="el-icon-download" size="small" @click="exportExLogs">导出Excel</el-button>
+                            <el-button type="danger" icon="el-icon-delete" size="small" @click="showExCleanDialog">清理日志</el-button>
+                        </div>
+                    </div>
+
+                    <el-table :data="exTableData" border v-loading="exLoading" stripe max-height="500">
+                        <el-table-column prop="createTime" label="发生时间" width="160">
+                            <template slot-scope="scope">
+                                {{ formatTime(scope.row.createTime) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="exceptionType" label="异常类型" min-width="200" show-overflow-tooltip></el-table-column>
+                        <el-table-column prop="errorMessage" label="错误信息" min-width="180" show-overflow-tooltip></el-table-column>
+                        <el-table-column prop="requestUrl" label="请求URL" width="180" show-overflow-tooltip></el-table-column>
+                        <el-table-column prop="requestMethod" label="请求方式" width="80" align="center">
+                            <template slot-scope="scope">
+                                <el-tag :type="methodTag(scope.row.requestMethod)" size="small">{{ scope.row.requestMethod }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="username" label="操作人" width="90"></el-table-column>
+                        <el-table-column prop="ip" label="IP地址" width="130"></el-table-column>
+                        <el-table-column label="操作" width="80" align="center" fixed="right">
+                            <template slot-scope="scope">
+                                <el-button type="text" size="small" @click="viewExDetail(scope.row)">详情</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <div class="pagination-wrapper">
+                        <span style="color: #909399; font-size: 13px;">共 {{ exTotal }} 条记录</span>
+                        <el-pagination background layout="prev, pager, next, jumper, sizes, total"
+                            :total="exTotal" :page-size="exPageSize" :current-page.sync="exPageNum"
+                            :page-sizes="[10, 20, 50, 100]"
+                            @current-change="handleExPageChange" @size-change="handleExSizeChange">
+                        </el-pagination>
+                    </div>
+                </div>
+
+                <!-- 异常详情对话框 -->
+                <el-dialog title="异常详情" :visible.sync="exDetailVisible" width="750px" top="5vh">
+                    <div v-if="exDetail" style="font-size: 14px; line-height: 2;">
+                        <p><strong>异常ID：</strong>{{ exDetail.exceptionId }}</p>
+                        <p><strong>发生时间：</strong>{{ formatTime(exDetail.createTime) }}</p>
+                        <p><strong>异常类型：</strong><span style="color: #f56c6c;">{{ exDetail.exceptionType }}</span></p>
+                        <p><strong>错误信息：</strong>{{ exDetail.errorMessage }}</p>
+                        <p><strong>请求URL：</strong>{{ exDetail.requestUrl }}</p>
+                        <p><strong>请求方式：</strong>{{ exDetail.requestMethod }}</p>
+                        <p><strong>操作人：</strong>{{ exDetail.username }}</p>
+                        <p><strong>IP地址：</strong>{{ exDetail.ip }}</p>
+                        <p><strong>异常堆栈：</strong></p>
+                        <div class="stack-detail">{{ exDetail.stackTrace || '无堆栈信息' }}</div>
+                    </div>
+                </el-dialog>
+
+                <!-- 清理异常日志对话框 -->
+                <el-dialog title="清理异常日志" :visible.sync="exCleanVisible" width="500px">
+                    <div class="cleanup-warning">
+                        <i class="el-icon-warning"></i>
+                        清理操作将永久删除指定时间范围内的异常日志，此操作不可恢复！清理操作本身会被记录。
+                    </div>
+                    <el-form label-width="100px">
+                        <el-form-item label="起始日期">
+                            <el-date-picker v-model="exCleanForm.startDate" type="date" placeholder="选择起始日期"
+                                value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+                        </el-form-item>
+                        <el-form-item label="截止日期">
+                            <el-date-picker v-model="exCleanForm.endDate" type="date" placeholder="选择截止日期"
+                                value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="exCleanVisible = false">取消</el-button>
+                        <el-button type="danger" @click="executeExClean" :loading="exCleaning">确认清理</el-button>
+                    </span>
+                </el-dialog>
+            </el-tab-pane>
+        </el-tabs>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@2.7.14/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui@2.15.13/lib/index.js"></script>
+<script src="https://unpkg.com/axios@1.6.2/dist/axios.min.js"></script>
+<script>
+new Vue({
+    el: '#app',
+    data() {
+        return {
+            activeTab: 'operation',
+            // 操作日志
+            opSearch: { username: '', module: '', type: '', result: '', dateRange: null },
+            opTableData: [], opTotal: 0, opPageNum: 1, opPageSize: 10, opLoading: false,
+            opCleanVisible: false, opCleaning: false,
+            opCleanForm: { startDate: '', endDate: '' },
+            // 异常日志
+            exSearch: { username: '', exceptionType: '', dateRange: null },
+            exTableData: [], exTotal: 0, exPageNum: 1, exPageSize: 10, exLoading: false,
+            exDetailVisible: false, exDetail: null,
+            exCleanVisible: false, exCleaning: false,
+            exCleanForm: { startDate: '', endDate: '' }
+        };
+    },
+    mounted() { this.searchOpLogs(); },
+    methods: {
+        // ==================== 操作日志 ====================
+        searchOpLogs() {
+            this.opLoading = true;
+            var params = { pageNum: this.opPageNum, pageSize: this.opPageSize };
+            if (this.opSearch.username) params.username = this.opSearch.username;
+            if (this.opSearch.module) params.module = this.opSearch.module;
+            if (this.opSearch.type) params.type = this.opSearch.type;
+            if (this.opSearch.result) params.result = this.opSearch.result;
+            if (this.opSearch.dateRange && this.opSearch.dateRange.length === 2) {
+                params.startDate = this.opSearch.dateRange[0];
+                params.endDate = this.opSearch.dateRange[1];
+            }
+            axios.get('/log/list', { params: params }).then(res => {
+                if (res.data.code === 200) {
+                    this.opTableData = res.data.data.records;
+                    this.opTotal = res.data.data.total;
+                }
+            }).finally(() => { this.opLoading = false; });
+        },
+        resetOpSearch() {
+            this.opSearch = { username: '', module: '', type: '', result: '', dateRange: null };
+            this.opPageNum = 1;
+            this.searchOpLogs();
+        },
+        handleOpPageChange(page) { this.opPageNum = page; this.searchOpLogs(); },
+        handleOpSizeChange(size) { this.opPageSize = size; this.opPageNum = 1; this.searchOpLogs(); },
+        exportOpLogs() {
+            var params = { pageNum: 1, pageSize: 10000 };
+            if (this.opSearch.username) params.username = this.opSearch.username;
+            if (this.opSearch.module) params.module = this.opSearch.module;
+            if (this.opSearch.type) params.type = this.opSearch.type;
+            if (this.opSearch.result) params.result = this.opSearch.result;
+            if (this.opSearch.dateRange && this.opSearch.dateRange.length === 2) {
+                params.startDate = this.opSearch.dateRange[0];
+                params.endDate = this.opSearch.dateRange[1];
+            }
+            var qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+            window.open('/log/export?' + qs);
+        },
+        showOpCleanDialog() {
+            this.opCleanForm = { startDate: '', endDate: '' };
+            this.opCleanVisible = true;
+        },
+        executeOpClean() {
+            if (!this.opCleanForm.startDate || !this.opCleanForm.endDate) {
+                this.$message.warning('请选择清理时间范围'); return;
+            }
+            this.$confirm('确认永久删除该时间范围内的操作日志？此操作不可恢复！', '清理确认', {
+                confirmButtonText: '确认清理', cancelButtonText: '取消', type: 'warning'
+            }).then(() => {
+                this.opCleaning = true;
+                var params = new URLSearchParams();
+                params.append('startDate', this.opCleanForm.startDate);
+                params.append('endDate', this.opCleanForm.endDate);
+                params.append('operator', 'admin');
+                axios.post('/log/clean', params).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.data);
+                        this.opCleanVisible = false;
+                        this.searchOpLogs();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                }).finally(() => { this.opCleaning = false; });
+            }).catch(() => {});
+        },
+        // ==================== 异常日志 ====================
+        handleTabChange(tab) {
+            if (tab.name === 'exception' && this.exTableData.length === 0) this.searchExLogs();
+            if (tab.name === 'operation' && this.opTableData.length === 0) this.searchOpLogs();
+        },
+        searchExLogs() {
+            this.exLoading = true;
+            var params = { pageNum: this.exPageNum, pageSize: this.exPageSize };
+            if (this.exSearch.username) params.username = this.exSearch.username;
+            if (this.exSearch.exceptionType) params.exceptionType = this.exSearch.exceptionType;
+            if (this.exSearch.dateRange && this.exSearch.dateRange.length === 2) {
+                params.startDate = this.exSearch.dateRange[0];
+                params.endDate = this.exSearch.dateRange[1];
+            }
+            axios.get('/log/exception/list', { params: params }).then(res => {
+                if (res.data.code === 200) {
+                    this.exTableData = res.data.data.records;
+                    this.exTotal = res.data.data.total;
+                }
+            }).finally(() => { this.exLoading = false; });
+        },
+        resetExSearch() {
+            this.exSearch = { username: '', exceptionType: '', dateRange: null };
+            this.exPageNum = 1;
+            this.searchExLogs();
+        },
+        handleExPageChange(page) { this.exPageNum = page; this.searchExLogs(); },
+        handleExSizeChange(size) { this.exPageSize = size; this.exPageNum = 1; this.searchExLogs(); },
+        viewExDetail(row) {
+            axios.get('/log/exception/detail', { params: { exceptionId: row.exceptionId } }).then(res => {
+                if (res.data.code === 200) {
+                    this.exDetail = res.data.data;
+                    this.exDetailVisible = true;
+                } else {
+                    this.$message.error(res.data.msg);
+                }
+            });
+        },
+        exportExLogs() {
+            var params = { pageNum: 1, pageSize: 10000 };
+            if (this.exSearch.username) params.username = this.exSearch.username;
+            if (this.exSearch.exceptionType) params.exceptionType = this.exSearch.exceptionType;
+            if (this.exSearch.dateRange && this.exSearch.dateRange.length === 2) {
+                params.startDate = this.exSearch.dateRange[0];
+                params.endDate = this.exSearch.dateRange[1];
+            }
+            var qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+            window.open('/log/exception/export?' + qs);
+        },
+        showExCleanDialog() {
+            this.exCleanForm = { startDate: '', endDate: '' };
+            this.exCleanVisible = true;
+        },
+        executeExClean() {
+            if (!this.exCleanForm.startDate || !this.exCleanForm.endDate) {
+                this.$message.warning('请选择清理时间范围'); return;
+            }
+            this.$confirm('确认永久删除该时间范围内的异常日志？此操作不可恢复！', '清理确认', {
+                confirmButtonText: '确认清理', cancelButtonText: '取消', type: 'warning'
+            }).then(() => {
+                this.exCleaning = true;
+                var params = new URLSearchParams();
+                params.append('startDate', this.exCleanForm.startDate);
+                params.append('endDate', this.exCleanForm.endDate);
+                params.append('operator', 'admin');
+                axios.post('/log/exception/clean', params).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.data);
+                        this.exCleanVisible = false;
+                        this.searchExLogs();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                }).finally(() => { this.exCleaning = false; });
+            }).catch(() => {});
+        },
+        // ==================== 工具方法 ====================
+        formatTime(time) {
+            if (!time) return '';
+            var d = new Date(time);
+            var y = d.getFullYear();
+            var m = ('0' + (d.getMonth() + 1)).slice(-2);
+            var day = ('0' + d.getDate()).slice(-2);
+            var h = ('0' + d.getHours()).slice(-2);
+            var min = ('0' + d.getMinutes()).slice(-2);
+            var s = ('0' + d.getSeconds()).slice(-2);
+            return y + '-' + m + '-' + day + ' ' + h + ':' + min + ':' + s;
+        },
+        typeTag(type) {
+            var map = { '新增': 'success', '修改': 'warning', '删除': 'danger', '查询': 'info', '导出': 'info', '审核': 'warning', '登录': 'success' };
+            return map[type] || 'info';
+        },
+        methodTag(method) {
+            var map = { 'GET': 'success', 'POST': 'warning', 'PUT': 'danger', 'DELETE': 'danger' };
+            return map[method] || 'info';
+        }
+    }
+});
+</script>
+</body>
+</html>
