@@ -164,7 +164,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                     // 计算积分抵扣金额（100积分=1元）
                     pointsDiscount = new BigDecimal(pointsUsed).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP);
                     
-                    // 验证总优惠不能超过订单金额
+                    // 验证总优惠不能超过订单金额（允许等于，即实收可以为0）
                     if (discount.add(pointsDiscount).compareTo(totalAmount) > 0) {
                         return Result.fail("优惠总额不能超过订单总金额");
                     }

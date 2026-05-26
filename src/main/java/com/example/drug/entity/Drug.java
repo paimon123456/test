@@ -1,6 +1,7 @@
 package com.example.drug.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -42,10 +43,12 @@ public class Drug {
     // 医保类型
     private String medicalInsurance;
     
-    // 有效期
+    // 有效期（数据库中可能不存在此字段，标记为非表字段）
+    @TableField(exist = false)
     private Date expiryDate;
     
-    // 有效期（药品默认有效期天数）
+    // 有效期天数（数据库中可能不存在此字段，标记为非表字段）
+    @TableField(exist = false)
     private Integer expiryDays;
     
     // 采购价
@@ -53,6 +56,10 @@ public class Drug {
     
     // 零售价
     private BigDecimal retailPrice;
+    
+    // 会员价（数据库中可能不存在此字段，标记为非表字段）
+    @TableField(exist = false)
+    private BigDecimal memberPrice;
     
     // 状态 1在售 0停售
     private Integer status;

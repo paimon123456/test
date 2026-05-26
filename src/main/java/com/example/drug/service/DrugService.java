@@ -2,10 +2,13 @@ package com.example.drug.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.drug.entity.Drug;
+import com.example.drug.util.Result;
+
 import java.util.List;
 
 public interface DrugService extends IService<Drug> {
     void resetIdSequence();
     List<Drug> getExpiringDrugs(Integer days);
     String generateNextDrugId();
+    Result list(String drugName, Integer pageNum, Integer pageSize);
 }

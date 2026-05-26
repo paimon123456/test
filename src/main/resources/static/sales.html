@@ -94,7 +94,7 @@
                 </el-select>
             </el-col>
             <el-col :span="8">
-                <el-input v-model="discount" placeholder="优惠金额" type="number" @input="calculateTotal">
+                <el-input v-model="discount" placeholder="优惠金额" type="number" @input="handleDiscountChange">
                     <template slot="prepend">优惠</template>
                 </el-input>
             </el-col>
@@ -169,14 +169,48 @@ new Vue({
                 });
         },
         searchDrug() {
-            if (!this.drugSearchKeyword) return;
-            axios.get('/drug/list').then(res => {
-                if (res.data.code === 200) {
-                    this.drugList = res.data.data.filter(drug => 
-                        drug.drugName.includes(this.drugSearchKeyword) || drug.drugId.includes(this.drugSearchKeyword)
-                    );
-                    this.drugDialogVisible = true;
+            if (!this.drugSearchKeyword) {
+                this.$message.warning('请输入药品名称或编码');
+                return;
+            }
+            
+            const loading = this.$loading({
+                lock: true,
+                text: '搜索中...',
+                spinner: 'el-icon-loading',
+                background: 'rgba(0, 0, 0, 0.7)'
+            });
+            
+            axios.get('/drug/list', {
+                params: {
+                    drugName: this.drugSearchKeyword,
+                    pageNum: 1,
+                    pageSize: 100
                 }
+            })
+            .then(res => {
+                loading.close();
+                if (res.data.code === 200) {
+                    // 从分页数据中获取记录
+                    const records = res.data.data.records || res.data.data.list || [];
+                    // 前端过滤
+                    this.drugList = records.filter(drug => 
+                        drug.drugName && drug.drugName.includes(this.drugSearchKeyword)
+                    );
+                    
+                    if (this.drugList.length === 0) {
+                        this.$message.warning('未找到匹配的药品');
+                    } else {
+                        this.drugDialogVisible = true;
+                    }
+                } else {
+                    this.$message.error('搜索失败：' + res.data.msg);
+                }
+            })
+            .catch(err => {
+                loading.close();
+                console.error('搜索药品失败：', err);
+                this.$message.error('搜索失败，请检查网络连接');
             });
         },
         getDrugStock(drugId) {
@@ -209,7 +243,17 @@ new Vue({
         },
         calculateTotal() {
             this.totalAmount = this.cartItems.reduce((sum, item) => sum + item.saleNum * item.salePrice, 0);
+            // 实收金额 = 应收金额 - 优惠金额（积分抵扣只是显示用的积分数，不重复扣减）
             this.payAmount = this.totalAmount - (this.discount || 0);
+        },
+        handleDiscountChange(val) {
+            // 优惠金额变化时，自动将优惠金额*10填入积分抵扣
+            if (val && !isNaN(val)) {
+                this.pointsUsed = parseFloat(val) * 10;
+            } else {
+                this.pointsUsed = 0;
+            }
+            this.calculateTotal();
         },
         submitOrder() {
             if (this.cartItems.length === 0) {
@@ -222,7 +266,7 @@ new Vue({
                 cashierId: this.cashierId,
                 payType: this.payType,
                 discount: this.discount || 0,
-                pointsUsed: this.pointsUsed || 0,
+                // pointsUsed 仅用于前端显示，不传递给后端（避免重复扣减）
                 items: this.cartItems.map(item => ({
                     drugId: item.drugId,
                     saleNum: item.saleNum,

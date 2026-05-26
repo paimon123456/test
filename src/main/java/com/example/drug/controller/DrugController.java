@@ -32,8 +32,10 @@ public class DrugController {
     }
 
     @GetMapping("/list")
-    public Result list() {
-        return Result.success(drugService.list());
+    public Result list(@RequestParam(required = false) String drugName,
+                       @RequestParam(defaultValue = "1") Integer pageNum,
+                       @RequestParam(defaultValue = "10") Integer pageSize) {
+        return drugService.list(drugName, pageNum, pageSize);
     }
 
     @PostMapping("/update")

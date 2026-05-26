@@ -17,7 +17,11 @@ public class OperationLog {
     private String userId;
     private String username;
     private String content;
+    
+    // 执行结果（数据库中可能不存在此字段，标记为非表字段）
+    @TableField(exist = false)
     private String result;
+    
     private String ip;
     private Date createTime;
     
