@@ -76,6 +76,7 @@ CREATE TABLE drug_info (
     purchase_price DECIMAL(10,2) COMMENT '采购价',
     retail_price DECIMAL(10,2) COMMENT '零售价',
     member_price DECIMAL(10,2) COMMENT '会员价',
+    expiry_days INT DEFAULT 365 COMMENT '有效期天数',
     status TINYINT DEFAULT 1 COMMENT '状态 1在售 0停售',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

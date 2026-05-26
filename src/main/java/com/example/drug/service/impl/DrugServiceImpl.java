@@ -49,6 +49,24 @@ public class DrugServiceImpl extends ServiceImpl<DrugMapper, Drug> implements Dr
     }
 
     @Override
+    public String generateNextDrugId() {
+        List<Drug> list = this.list();
+        int max = 0;
+        for (Drug d : list) {
+            String id = d.getDrugId();
+            if (id != null) {
+                try {
+                    int num = Integer.parseInt(id);
+                    if (num > max) max = num;
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+        return String.valueOf(max + 1);
+    }
+
+    @Override
     public List<Drug> getExpiringDrugs(Integer days) {
         // 从库存表查询近效期药品
         List<Inventory> expiringInventory = inventoryMapper.selectNearExpiry(days);

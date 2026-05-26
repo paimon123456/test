@@ -7,4 +7,5 @@ import java.util.List;
 public interface DrugService extends IService<Drug> {
     void resetIdSequence();
     List<Drug> getExpiringDrugs(Integer days);
+    String generateNextDrugId();
 }

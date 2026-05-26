@@ -13,7 +13,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/role")
@@ -37,11 +36,28 @@ public class RoleController {
         return Result.success(roles);
     }
 
+    private String generateNextRoleId() {
+        List<SysRole> list = sysRoleMapper.selectList(null);
+        int max = 0;
+        for (SysRole r : list) {
+            String id = r.getRoleId();
+            if (id != null) {
+                try {
+                    int num = Integer.parseInt(id);
+                    if (num > max) max = num;
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+        return String.valueOf(max + 1);
+    }
+
     @PostMapping("/add")
     public Result add(@RequestBody SysRole role) {
         try {
             if (role.getRoleId() == null || role.getRoleId().isEmpty()) {
-                role.setRoleId(UUID.randomUUID().toString().replace("-", ""));
+                role.setRoleId(generateNextRoleId());
             }
             sysRoleMapper.insert(role);
             return Result.success("添加成功");
@@ -84,7 +100,7 @@ public class RoleController {
             
             // 添加新权限
             if (rolePerm.getPermId() != null) {
-                rolePerm.setId(UUID.randomUUID().toString().replace("-", ""));
+                rolePerm.setId(generateNextRoleId());
                 sysRolePermMapper.insert(rolePerm);
             }
             return Result.success("权限分配成功");

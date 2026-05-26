@@ -45,6 +45,9 @@ public class Drug {
     // 有效期
     private Date expiryDate;
     
+    // 有效期（药品默认有效期天数）
+    private Integer expiryDays;
+    
     // 采购价
     private BigDecimal purchasePrice;
     
