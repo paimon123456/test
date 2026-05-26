@@ -88,6 +88,7 @@
         .icon-price { color: #00BCD4; }
         .icon-supplier { color: #9c27b0; }
         .icon-purchase { color: #ff5722; }
+        .icon-log { color: #607D8B; }
     </style>
 </head>
 <body>
@@ -169,6 +170,11 @@
                 <div class="module-icon icon-purchase"><i class="el-icon-shopping-cart-2"></i></div>
                 <div class="module-title">采购管理</div>
                 <div class="module-desc">采购订单、审核流程、统计报表</div>
+            </div>
+            <div class="module-card" @click="goTo('log-management.html')">
+                <div class="module-icon icon-log"><i class="el-icon-document"></i></div>
+                <div class="module-title">系统日志</div>
+                <div class="module-desc">操作日志、异常追踪、日志清理</div>
             </div>
         </div>
     </div>

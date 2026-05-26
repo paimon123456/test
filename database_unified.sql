@@ -534,12 +534,30 @@ CREATE TABLE sys_log (
     user_id VARCHAR(32) NOT NULL COMMENT '操作人ID',
     username VARCHAR(50) NOT NULL COMMENT '操作人姓名',
     content TEXT NOT NULL COMMENT '操作内容',
+    result VARCHAR(10) DEFAULT '成功' COMMENT '执行结果：成功/失败',
     ip VARCHAR(50) COMMENT 'IP地址',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
     KEY idx_user (user_id),
     KEY idx_module (module),
     KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块-操作日志';
+
+-- 异常日志表
+CREATE TABLE exception_log (
+    exception_id VARCHAR(32) NOT NULL COMMENT '异常ID' PRIMARY KEY,
+    exception_type VARCHAR(200) NOT NULL COMMENT '异常类型',
+    error_message TEXT NOT NULL COMMENT '错误信息',
+    stack_trace LONGTEXT COMMENT '异常堆栈',
+    request_url VARCHAR(500) COMMENT '请求URL',
+    request_method VARCHAR(10) COMMENT '请求方式：GET/POST等',
+    user_id VARCHAR(32) COMMENT '操作人ID',
+    username VARCHAR(50) COMMENT '操作人姓名',
+    ip VARCHAR(50) COMMENT 'IP地址',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发生时间',
+    KEY idx_exception_type (exception_type),
+    KEY idx_create_time (create_time),
+    KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块-异常日志';
 
 -- ============================================
 -- 数据迁移示例 (如果需要从旧表迁移数据)
