@@ -2,7 +2,9 @@ package com.example.drug.service.warehouse.impl;
 
 import com.example.drug.common.UUIDUtil;
 import com.example.drug.dto.TransferDTO;
+import com.example.drug.entity.inventory.Inventory;
 import com.example.drug.entity.warehouse.WarehouseTransfer;
+import com.example.drug.mapper.InventoryMapper;
 import com.example.drug.mapper.WarehouseTransferMapper;
 import com.example.drug.service.warehouse.WarehouseTransferService;
 import com.example.drug.util.Result;
@@ -11,6 +13,8 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -20,6 +24,9 @@ public class WarehouseTransferServiceImpl implements WarehouseTransferService {
 
     @Autowired
     private WarehouseTransferMapper transferMapper;
+
+    @Autowired
+    private InventoryMapper inventoryMapper;
 
     @Override
     public Result list(String srcWareId, String destWareId, String status, Integer pageNum, Integer pageSize) {
@@ -52,8 +59,30 @@ public class WarehouseTransferServiceImpl implements WarehouseTransferService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result finish(String transferId) {
+        // 1. 查询移库记录
+        WarehouseTransfer transfer = transferMapper.selectById(transferId);
+        if (transfer == null) {
+            return Result.fail("移库记录不存在");
+        }
+        if (!"已审核".equals(transfer.getStatus())) {
+            return Result.fail("只有已审核的移库单才能执行完成操作");
+        }
+
+        // 2. 更新库存表中的仓库ID和库位信息
+        Inventory inventory = inventoryMapper.selectById(transfer.getInventoryId());
+        if (inventory != null) {
+            inventory.setWarehouseId(transfer.getDestWareId());
+            // 这里可以根据需要进一步细化到具体库位，如果移库单里有目标库位字段的话
+            // 暂时先更新仓库ID
+            inventoryMapper.updateById(inventory);
+        } else {
+            return Result.fail("关联的库存记录不存在");
+        }
+
+        // 3. 更新移库单状态为已完成
         int row = transferMapper.updateStatus(transferId, "已完成");
-        return row > 0 ? Result.success("移库完成") : Result.fail("移库完成失败");
+        return row > 0 ? Result.success("移库完成，库存信息已更新") : Result.fail("移库完成失败");
     }
 }
