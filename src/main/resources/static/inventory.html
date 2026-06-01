@@ -23,6 +23,7 @@
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
+        <el-button type="success" icon="el-icon-document-checked" @click="goInventoryCheck">库存盘点</el-button>
     </div>
     <el-table :data="tableData" border v-loading="loading">
         <el-table-column prop="inventoryId" label="库存ID" width="160"></el-table-column>
@@ -72,6 +73,7 @@ new Vue({
         },
         search() { this.pageNum = 1; this.loadData(); },
         reset() { this.searchForm = { warehouseId: '', drugName: '', status: '' }; this.pageNum = 1; this.loadData(); },
+        goInventoryCheck() { window.location.href = 'inventory-check.html'; },
         handleCurrentChange(val) { this.pageNum = val; this.loadData(); },
         getStatusType(row) {
             // 优先使用动态状态
