@@ -151,8 +151,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                 return Result.fail("优惠金额不能超过订单总金额");
             }
             
-            // 如果使用了会员积分，计算积分抵扣金额（假设100积分=1元）
-            BigDecimal pointsDiscount = BigDecimal.ZERO;
+            // 如果使用了会员积分，扣除积分（discount就是积分抵扣产生的优惠金额）
             if (memberId != null && !memberId.isEmpty() && pointsUsed > 0) {
                 MemberInfo member = memberInfoMapper.selectById(memberId);
                 if (member != null) {
@@ -161,22 +160,14 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                         return Result.fail("会员积分不足，当前积分：" + member.getPoints());
                     }
                     
-                    // 计算积分抵扣金额（100积分=1元）
-                    pointsDiscount = new BigDecimal(pointsUsed).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP);
-                    
-                    // 验证总优惠不能超过订单金额（允许等于，即实收可以为0）
-                    if (discount.add(pointsDiscount).compareTo(totalAmount) > 0) {
-                        return Result.fail("优惠总额不能超过订单总金额");
-                    }
-                    
                     // 扣除会员积分
                     member.setPoints(member.getPoints() - pointsUsed);
                     memberInfoMapper.updateById(member);
                 }
             }
             
-            // 3. 计算实收金额
-            BigDecimal payAmount = totalAmount.subtract(discount).subtract(pointsDiscount);
+            // 3. 计算实收金额（discount已包含积分抵扣的优惠）
+            BigDecimal payAmount = totalAmount.subtract(discount);
             if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
                 payAmount = BigDecimal.ZERO;
             }

@@ -12,6 +12,20 @@
         .cart-table { margin-bottom: 20px; }
         .summary { background: #fff; padding: 20px; border: 1px solid #dcdfe6; border-radius: 4px; }
         .total-row { font-size: 18px; font-weight: bold; margin-top: 10px; }
+        .pay-type-section { margin-bottom: 20px; padding: 16px; background: #f5f7fa; border-radius: 8px; }
+        .pay-type-section .section-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 12px; }
+        .pay-type-options { display: flex; gap: 12px; flex-wrap: wrap; }
+        .pay-type-card { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100px; height: 80px; border: 2px solid #dcdfe6; border-radius: 8px; cursor: pointer; transition: all 0.3s; background: #fff; padding: 8px; }
+        .pay-type-card:hover { border-color: #409eff; background: #ecf5ff; }
+        .pay-type-card.active { border-color: #409eff; background: #ecf5ff; box-shadow: 0 0 8px rgba(64,158,255,0.3); }
+        .pay-type-card .pay-icon { font-size: 28px; margin-bottom: 6px; }
+        .pay-type-card .pay-label { font-size: 13px; color: #606266; }
+        .pay-type-card.active .pay-label { color: #409eff; font-weight: 600; }
+        .pay-icon-cash { color: #67c23a; }
+        .pay-icon-wechat { color: #07c160; }
+        .pay-icon-alipay { color: #1677ff; }
+        .pay-icon-insurance { color: #e6a23c; }
+        .pay-icon-bank { color: #909399; }
     </style>
 </head>
 <body>
@@ -81,17 +95,40 @@
         </el-table-column>
     </el-table>
 
+    <!-- 支付方式选择 -->
+    <div class="pay-type-section">
+        <div class="section-title">选择支付方式</div>
+        <div class="pay-type-options">
+            <div class="pay-type-card" :class="{ active: payType === '现金' }" @click="payType = '现金'">
+                <span class="pay-icon pay-icon-cash">💰</span>
+                <span class="pay-label">现金</span>
+            </div>
+            <div class="pay-type-card" :class="{ active: payType === '微信' }" @click="payType = '微信'">
+                <span class="pay-icon pay-icon-wechat">💚</span>
+                <span class="pay-label">微信</span>
+            </div>
+            <div class="pay-type-card" :class="{ active: payType === '支付宝' }" @click="payType = '支付宝'">
+                <span class="pay-icon pay-icon-alipay">💙</span>
+                <span class="pay-label">支付宝</span>
+            </div>
+            <div class="pay-type-card" :class="{ active: payType === '医保' }" @click="payType = '医保'">
+                <span class="pay-icon pay-icon-insurance">🏥</span>
+                <span class="pay-label">医保</span>
+            </div>
+            <div class="pay-type-card" :class="{ active: payType === '银行卡' }" @click="payType = '银行卡'">
+                <span class="pay-icon pay-icon-bank">💳</span>
+                <span class="pay-label">银行卡</span>
+            </div>
+        </div>
+    </div>
+
     <!-- 结算信息 -->
     <div class="summary">
         <el-row :gutter="20">
             <el-col :span="8">
-                <el-select v-model="payType" placeholder="支付方式" style="width: 100%;">
-                    <el-option label="现金" value="现金"></el-option>
-                    <el-option label="微信" value="微信"></el-option>
-                    <el-option label="支付宝" value="支付宝"></el-option>
-                    <el-option label="医保" value="医保"></el-option>
-                    <el-option label="银行卡" value="银行卡"></el-option>
-                </el-select>
+                <div style="display:flex;align-items:center;height:40px;font-size:16px;font-weight:600;">
+                    支付方式：<span style="color:#409eff;">{{ payType }}</span>
+                </div>
             </el-col>
             <el-col :span="8">
                 <el-input v-model="discount" placeholder="优惠金额" type="number" @input="handleDiscountChange">
@@ -99,7 +136,7 @@
                 </el-input>
             </el-col>
             <el-col :span="8">
-                <el-input v-model="pointsUsed" placeholder="使用积分" type="number" @input="calculateTotal">
+                <el-input v-model="pointsUsed" placeholder="使用积分" type="number" @input="handlePointsChange">
                     <template slot="prepend">积分抵扣</template>
                 </el-input>
             </el-col>
@@ -243,15 +280,28 @@ new Vue({
         },
         calculateTotal() {
             this.totalAmount = this.cartItems.reduce((sum, item) => sum + item.saleNum * item.salePrice, 0);
-            // 实收金额 = 应收金额 - 优惠金额（积分抵扣只是显示用的积分数，不重复扣减）
+            // 实收金额 = 应收金额 - 优惠金额（100积分=1元，优惠金额已与积分同步）
             this.payAmount = this.totalAmount - (this.discount || 0);
         },
         handleDiscountChange(val) {
-            // 优惠金额变化时，自动将优惠金额*10填入积分抵扣
-            if (val && !isNaN(val)) {
-                this.pointsUsed = parseFloat(val) * 10;
+            // 优惠金额变化时，按100积分=1元同步积分抵扣
+            if (val && !isNaN(val) && parseFloat(val) > 0) {
+                this.discount = parseFloat(val);
+                this.pointsUsed = Math.round(this.discount * 100);
+            } else {
+                this.discount = 0;
+                this.pointsUsed = 0;
+            }
+            this.calculateTotal();
+        },
+        handlePointsChange(val) {
+            // 积分抵扣变化时，按100积分=1元同步优惠金额
+            if (val && !isNaN(val) && parseInt(val) > 0) {
+                this.pointsUsed = parseInt(val);
+                this.discount = Math.round(this.pointsUsed / 100 * 100) / 100;
             } else {
                 this.pointsUsed = 0;
+                this.discount = 0;
             }
             this.calculateTotal();
         },
@@ -266,7 +316,7 @@ new Vue({
                 cashierId: this.cashierId,
                 payType: this.payType,
                 discount: this.discount || 0,
-                // pointsUsed 仅用于前端显示，不传递给后端（避免重复扣减）
+                pointsUsed: this.pointsUsed || 0,
                 items: this.cartItems.map(item => ({
                     drugId: item.drugId,
                     saleNum: item.saleNum,

@@ -77,140 +77,212 @@
             <div class="subtitle">支持订单号、会员、药品等多条件组合查询</div>
         </div>
 
-        <div class="search-card">
-            <div class="search-title">查询条件</div>
-            <div class="search-form">
-                <div class="search-item">
-                    <label>订单号：</label>
-                    <el-input v-model="searchForm.orderId" placeholder="支持模糊匹配" clearable style="width: 180px;"></el-input>
-                </div>
-                <div class="search-item">
-                    <label>会员信息：</label>
-                    <el-input v-model="searchForm.memberId" placeholder="姓名/卡号/手机号" clearable style="width: 150px;"></el-input>
-                </div>
-                <div class="search-item">
-                    <label>收银员：</label>
-                    <el-input v-model="searchForm.cashierId" placeholder="姓名" clearable style="width: 120px;"></el-input>
-                </div>
-                <div class="search-item">
-                    <label>药品：</label>
-                    <el-input v-model="searchForm.drugName" placeholder="名称/编码" clearable style="width: 140px;"></el-input>
-                </div>
-                <div class="search-item">
-                    <label>状态：</label>
-                    <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px;">
-                        <el-option label="已完成" value="已完成"></el-option>
-                        <el-option label="已退货" value="已退货"></el-option>
-                        <el-option label="已取消" value="已取消"></el-option>
-                    </el-select>
-                </div>
-                <div class="search-item">
-                    <label>日期范围：</label>
-                    <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width: 260px;"></el-date-picker>
-                </div>
-                <div class="search-item">
-                    <el-button type="primary" icon="el-icon-search" @click="search">查询</el-button>
-                    <el-button icon="el-icon-refresh" @click="reset">重置</el-button>
-                </div>
-            </div>
-        </div>
-
         <div class="data-card">
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-label">订单总数</div>
-                    <div class="stat-value">{{ total }}</div>
-                </div>
-                <div class="stat-card green">
-                    <div class="stat-label">已完成</div>
-                    <div class="stat-value">{{ completedCount }}</div>
-                </div>
-                <div class="stat-card orange">
-                    <div class="stat-label">已退货</div>
-                    <div class="stat-value">{{ returnedCount }}</div>
-                </div>
-                <div class="stat-card blue">
-                    <div class="stat-label">订单总额</div>
-                    <div class="stat-value">¥{{ totalAmount.toFixed(2) }}</div>
-                </div>
-            </div>
+            <el-tabs v-model="activeMainTab" @tab-click="handleMainTabClick">
+                <!-- 销售订单列表 -->
+                <el-tab-pane label="销售订单" name="orders">
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <div class="stat-label">订单总数</div>
+                            <div class="stat-value">{{ total }}</div>
+                        </div>
+                        <div class="stat-card green">
+                            <div class="stat-label">已完成</div>
+                            <div class="stat-value">{{ completedCount }}</div>
+                        </div>
+                        <div class="stat-card orange">
+                            <div class="stat-label">已退货</div>
+                            <div class="stat-value">{{ returnedCount }}</div>
+                        </div>
+                        <div class="stat-card blue">
+                            <div class="stat-label">订单总额</div>
+                            <div class="stat-value">¥{{ totalAmount.toFixed(2) }}</div>
+                        </div>
+                    </div>
 
-            <div class="table-header">
-                <div class="table-title">订单列表</div>
-            </div>
+                    <div class="table-header">
+                        <div class="table-title">订单列表</div>
+                    </div>
 
-            <el-table :data="tableData" border v-loading="loading" @row-click="viewDetail" stripe>
-                <el-table-column prop="orderId" label="订单号" width="180" fixed></el-table-column>
-                <el-table-column prop="orderType" label="类型" width="80">
-                    <template slot-scope="scope">
-                        <span class="order-type type-sales">销售</span>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="memberName" label="客户" width="120">
-                    <template slot-scope="scope">
-                        <span>{{ scope.row.memberName || '散客' }}</span>
-                        <div style="font-size: 12px; color: #909399;">{{ scope.row.memberPhone || '' }}</div>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="cardNo" label="卡号" width="120">
-                    <template slot-scope="scope">{{ scope.row.cardNo || '-' }}</template>
-                </el-table-column>
-                <el-table-column prop="cashierName" label="收银员" width="100"></el-table-column>
-                <el-table-column prop="totalNum" label="数量" width="80" align="center"></el-table-column>
-                <el-table-column prop="totalAmount" label="应收" width="100" align="right">
-                    <template slot-scope="scope">
-                        <span class="amount">¥{{ scope.row.totalAmount }}</span>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="discount" label="优惠" width="90" align="right">
-                    <template slot-scope="scope">
-                        <span class="amount-green">-¥{{ scope.row.discount || 0 }}</span>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="payAmount" label="实收" width="100" align="right">
-                    <template slot-scope="scope">
-                        <span class="amount amount-red">¥{{ scope.row.payAmount }}</span>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="payType" label="支付方式" width="100" align="center">
-                    <template slot-scope="scope">
-                        <el-tag size="mini" type="info">{{ scope.row.payType || '-' }}</el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="orderTime" label="下单时间" width="160"></el-table-column>
-                <el-table-column prop="status" label="状态" width="100" align="center">
-                    <template slot-scope="scope">
-                        <span :class="getStatusClass(scope.row.status)">{{ scope.row.status }}</span>
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" width="100" fixed="right">
-                    <template slot-scope="scope">
-                        <el-button type="text" size="small" @click.stop="viewDetail(scope.row)" class="action-btn">
-                            <i class="el-icon-view"></i> 详情
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
+                    <el-table :data="tableData" border v-loading="loading" @row-click="viewDetail" stripe>
+                        <el-table-column prop="orderId" label="订单号" width="180" fixed></el-table-column>
+                        <el-table-column prop="orderType" label="类型" width="80">
+                            <template slot-scope="scope">
+                                <span class="order-type type-sales">销售</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="memberName" label="客户" width="120">
+                            <template slot-scope="scope">
+                                <span>{{ scope.row.memberName || '散客' }}</span>
+                                <div style="font-size: 12px; color: #909399;">{{ scope.row.memberPhone || '' }}</div>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="cardNo" label="卡号" width="120">
+                            <template slot-scope="scope">{{ scope.row.cardNo || '-' }}</template>
+                        </el-table-column>
+                        <el-table-column prop="cashierName" label="收银员" width="100"></el-table-column>
+                        <el-table-column prop="totalNum" label="数量" width="80" align="center"></el-table-column>
+                        <el-table-column prop="totalAmount" label="应收" width="100" align="right">
+                            <template slot-scope="scope">
+                                <span class="amount">¥{{ scope.row.totalAmount }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="discount" label="优惠" width="90" align="right">
+                            <template slot-scope="scope">
+                                <span class="amount-green">-¥{{ scope.row.discount || 0 }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="payAmount" label="实收" width="100" align="right">
+                            <template slot-scope="scope">
+                                <span class="amount amount-red">¥{{ scope.row.payAmount }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="payType" label="支付方式" width="100" align="center">
+                            <template slot-scope="scope">
+                                <el-tag size="mini" type="info">{{ scope.row.payType || '-' }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="orderTime" label="下单时间" width="160"></el-table-column>
+                        <el-table-column prop="status" label="状态" width="100" align="center">
+                            <template slot-scope="scope">
+                                <span :class="getStatusClass(scope.row.status)">{{ scope.row.status }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template slot-scope="scope">
+                                <el-button type="text" size="small" @click.stop="viewDetail(scope.row)" class="action-btn">
+                                    <i class="el-icon-view"></i> 详情
+                                </el-button>
+                                <el-button v-if="scope.row.status === '已完成'" type="text" size="small" @click.stop="openReturnDialog(scope.row)" class="action-btn" style="color: #f56c6c;">
+                                    <i class="el-icon-refresh-left"></i> 退货
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
 
-            <div class="pagination-wrapper">
-                <div class="page-size-select">
-                    <span>每页显示：</span>
-                    <el-select v-model="pageSize" @change="handleSizeChange" style="width: 100px;">
-                        <el-option :value="10" label="10 条"></el-option>
-                        <el-option :value="20" label="20 条"></el-option>
-                        <el-option :value="50" label="50 条"></el-option>
-                        <el-option :value="100" label="100 条"></el-option>
-                    </el-select>
-                </div>
-                <el-pagination 
-                    @current-change="handleCurrentChange" 
-                    :current-page="pageNum" 
-                    :page-size="pageSize" 
-                    :total="total" 
-                    layout="total, prev, pager, next, jumper"
-                    background>
-                </el-pagination>
-            </div>
+                    <div class="pagination-wrapper">
+                        <div class="page-size-select">
+                            <span>每页显示：</span>
+                            <el-select v-model="pageSize" @change="handleSizeChange" style="width: 100px;">
+                                <el-option :value="10" label="10 条"></el-option>
+                                <el-option :value="20" label="20 条"></el-option>
+                                <el-option :value="50" label="50 条"></el-option>
+                                <el-option :value="100" label="100 条"></el-option>
+                            </el-select>
+                        </div>
+                        <el-pagination 
+                            @current-change="handleCurrentChange" 
+                            :current-page="pageNum" 
+                            :page-size="pageSize" 
+                            :total="total" 
+                            layout="total, prev, pager, next, jumper"
+                            background>
+                        </el-pagination>
+                    </div>
+                </el-tab-pane>
+
+                <!-- 退货管理列表 -->
+                <el-tab-pane label="退货管理" name="returns">
+                    <div class="search-card">
+                        <div class="search-title">退货查询</div>
+                        <div class="search-form">
+                            <div class="search-item">
+                                <label>原订单号：</label>
+                                <el-input v-model="returnSearchForm.originalOrderId" placeholder="请输入订单号" size="small" clearable style="width: 200px;"></el-input>
+                            </div>
+                            <div class="search-item">
+                                <label>药品名称：</label>
+                                <el-input v-model="returnSearchForm.drugName" placeholder="请输入药品名称" size="small" clearable style="width: 200px;"></el-input>
+                            </div>
+                            <div class="search-item">
+                                <label>状态：</label>
+                                <el-select v-model="returnSearchForm.status" placeholder="请选择状态" size="small" clearable style="width: 150px;">
+                                    <el-option label="申请中" value="申请中"></el-option>
+                                    <el-option label="已完成" value="已完成"></el-option>
+                                    <el-option label="已驳回" value="已驳回"></el-option>
+                                </el-select>
+                            </div>
+                            <div class="search-item">
+                                <el-button type="primary" size="small" @click="loadReturnList">
+                                    <i class="el-icon-search"></i> 搜索
+                                </el-button>
+                                <el-button size="small" @click="resetReturnSearch">
+                                    <i class="el-icon-refresh"></i> 重置
+                                </el-button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-header">
+                        <div class="table-title">退货单列表</div>
+                    </div>
+
+                    <el-table :data="returnTableData" border v-loading="returnLoading" stripe>
+                        <el-table-column prop="returnId" label="退货单号" width="180" fixed></el-table-column>
+                        <el-table-column prop="originalOrderId" label="原订单号" width="180"></el-table-column>
+                        <el-table-column prop="drugName" label="药品名称" min-width="150"></el-table-column>
+                        <el-table-column prop="batchNo" label="生产批号" width="140"></el-table-column>
+                        <el-table-column prop="returnNum" label="退货数量" width="100" align="center"></el-table-column>
+                        <el-table-column prop="refundAmount" label="退款金额" width="120" align="right">
+                            <template slot-scope="scope">
+                                <span class="amount amount-green">￥{{ scope.row.refundAmount }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="returnReason" label="退货原因" min-width="150" show-overflow-tooltip></el-table-column>
+                        <el-table-column prop="status" label="状态" width="100" align="center">
+                            <template slot-scope="scope">
+                                <el-tag size="small" :type="getReturnTypeColor(scope.row.status)">{{ scope.row.status }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="createTime" label="申请时间" width="160"></el-table-column>
+                        <el-table-column label="操作" width="180" fixed="right">
+                            <template slot-scope="scope">
+                                <el-button 
+                                    v-if="scope.row.status === '申请中'" 
+                                    type="text" 
+                                    size="small" 
+                                    @click="auditReturn(scope.row, true)" 
+                                    class="action-btn"
+                                    style="color: #67c23a;">
+                                    <i class="el-icon-check"></i> 通过
+                                </el-button>
+                                <el-button 
+                                    v-if="scope.row.status === '申请中'" 
+                                    type="text" 
+                                    size="small" 
+                                    @click="auditReturn(scope.row, false)" 
+                                    class="action-btn"
+                                    style="color: #f56c6c;">
+                                    <i class="el-icon-close"></i> 驳回
+                                </el-button>
+                                <el-button type="text" size="small" @click="viewReturnDetail(scope.row)" class="action-btn">
+                                    <i class="el-icon-view"></i> 详情
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <div class="pagination-wrapper">
+                        <div class="page-size-select">
+                            <span>每页显示：</span>
+                            <el-select v-model="returnPageSize" @change="handleReturnPageChange" style="width: 100px;">
+                                <el-option :value="10" label="10 条"></el-option>
+                                <el-option :value="20" label="20 条"></el-option>
+                                <el-option :value="50" label="50 条"></el-option>
+                                <el-option :value="100" label="100 条"></el-option>
+                            </el-select>
+                        </div>
+                        <el-pagination 
+                            @current-change="handleReturnPageChange" 
+                            :current-page="returnPageNum" 
+                            :page-size="returnPageSize" 
+                            :total="returnTotal" 
+                            layout="total, prev, pager, next, jumper"
+                            background>
+                        </el-pagination>
+                    </div>
+                </el-tab-pane>
+            </el-tabs>
         </div>
     </div>
 
@@ -339,6 +411,90 @@
             </el-tabs>
         </div>
     </el-dialog>
+
+    <!-- 退货对话框 -->
+    <el-dialog title="销售退货" :visible.sync="returnDialogVisible" width="60%" top="5vh">
+        <div v-if="returnOrder">
+            <el-alert title="退货说明" type="warning" :closable="false" style="margin-bottom: 20px;">
+                <div slot="default">
+                    <p>1. 仅“已完成”状态的订单可以退货</p>
+                    <p>2. 退货数量不能超过原购买数量</p>
+                    <p>3. 退货后库存将自动回补</p>
+                    <p>4. 退货申请需要审核后才能生效</p>
+                </div>
+            </el-alert>
+
+            <div class="detail-section">
+                <div class="detail-title">原订单信息</div>
+                <div class="detail-info">
+                    <div class="info-item">
+                        <div class="info-label">订单号：</div>
+                        <div class="info-value">{{ returnOrder.orderId }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">客户姓名：</div>
+                        <div class="info-value">{{ returnOrder.memberName || '散客' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">下单时间：</div>
+                        <div class="info-value">{{ returnOrder.orderTime }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">实收金额：</div>
+                        <div class="info-value amount amount-red">￥{{ returnOrder.payAmount }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-title">退货明细</div>
+                <el-table :data="returnItems" border stripe>
+                    <el-table-column prop="drugName" label="药品名称" min-width="150"></el-table-column>
+                    <el-table-column prop="specification" label="规格" width="120"></el-table-column>
+                    <el-table-column prop="batchNo" label="生产批号" width="140"></el-table-column>
+                    <el-table-column prop="saleNum" label="购买数量" width="100" align="center"></el-table-column>
+                    <el-table-column label="退货数量" width="150" align="center">
+                        <template slot-scope="scope">
+                            <el-input-number 
+                                v-model="scope.row.returnNum" 
+                                :min="1" 
+                                :max="scope.row.saleNum"
+                                size="small"
+                                style="width: 120px;">
+                            </el-input-number>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="salePrice" label="单价" width="100" align="right">
+                        <template slot-scope="scope">￥{{ scope.row.salePrice }}</template>
+                    </el-table-column>
+                    <el-table-column label="退款金额" width="120" align="right">
+                        <template slot-scope="scope">
+                            <span class="amount amount-green">￥{{ (scope.row.returnNum * scope.row.salePrice).toFixed(2) }}</span>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-title">退货原因</div>
+                <el-input 
+                    v-model="returnReason" 
+                    type="textarea" 
+                    :rows="3"
+                    placeholder="请输入退货原因（必填）"
+                    maxlength="500"
+                    show-word-limit>
+                </el-input>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <el-button @click="returnDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="submitReturn" :loading="returnSubmitting">
+                    <i class="el-icon-check"></i> 提交退货申请
+                </el-button>
+            </div>
+        </div>
+    </el-dialog>
 </div>
 
 <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
@@ -370,10 +526,30 @@ new Vue({
         detailDialogVisible: false,
         currentOrder: null,
         orderItems: [],
-        activeTab: 'info'
+        activeTab: 'info',
+        // 主标签页
+        activeMainTab: 'orders',
+        // 退货相关
+        returnDialogVisible: false,
+        returnOrder: null,
+        returnItems: [],
+        returnReason: '',
+        returnSubmitting: false,
+        // 退货列表相关
+        returnLoading: false,
+        returnTableData: [],
+        returnPageNum: 1,
+        returnPageSize: 10,
+        returnTotal: 0,
+        returnSearchForm: {
+            originalOrderId: '',
+            drugName: '',
+            status: ''
+        }
     },
     mounted() {
         this.loadData();
+        this.loadReturnList();
     },
     methods: {
         loadData() {
@@ -468,6 +644,199 @@ new Vue({
                 '已取消': 'status-tag status-info'
             };
             return map[status] || 'status-tag';
+        },
+
+        // 打开退货对话框
+        openReturnDialog(row) {
+            this.returnOrder = row;
+            this.returnReason = '';
+            
+            // 获取订单详情，包含药品明细
+            axios.get(`/sales/order/${row.orderId}`)
+                .then(res => {
+                    if (res.data.code === 200) {
+                        const items = res.data.data.items || [];
+                        // 为每个药品添加退货数量字段（默认等于购买数量）
+                        this.returnItems = items.map(item => ({
+                            ...item,
+                            returnNum: item.saleNum // 默认全部退货
+                        }));
+                        this.returnDialogVisible = true;
+                    }
+                })
+                .catch(() => {
+                    this.$message.error('加载订单详情失败');
+                });
+        },
+
+        // 提交退货申请
+        submitReturn() {
+            if (!this.returnReason || !this.returnReason.trim()) {
+                this.$message.warning('请输入退货原因');
+                return;
+            }
+
+            // 验证退货数量
+            for (let item of this.returnItems) {
+                if (!item.returnNum || item.returnNum <= 0) {
+                    this.$message.warning(`药品【${item.drugName}】的退货数量必须大于0`);
+                    return;
+                }
+                if (item.returnNum > item.saleNum) {
+                    this.$message.warning(`药品【${item.drugName}】的退货数量不能超过购买数量`);
+                    return;
+                }
+            }
+
+            this.returnSubmitting = true;
+
+            // 构建退货数据
+            const returnData = {
+                originalOrderId: this.returnOrder.orderId,
+                operatorId: localStorage.getItem('userId') || '',
+                returnReason: this.returnReason,
+                items: this.returnItems.map(item => ({
+                    drugId: item.drugId,
+                    batchNo: item.batchNo,
+                    returnNum: item.returnNum
+                }))
+            };
+
+            axios.post('/sales/return/create', returnData)
+                .then(res => {
+                    this.returnSubmitting = false;
+                    if (res.data.code === 200) {
+                        this.$message.success('退货申请提交成功，等待审核');
+                        this.returnDialogVisible = false;
+                        // 刷新列表
+                        this.loadData();
+                    } else {
+                        this.$message.error(res.data.msg || '退货申请失败');
+                    }
+                })
+                .catch(err => {
+                    this.returnSubmitting = false;
+                    this.$message.error('退货申请失败：' + (err.message || '网络错误'));
+                });
+        },
+
+        // 主标签页切换
+        handleMainTabClick(tab) {
+            if (tab.name === 'returns') {
+                this.loadReturnList();
+            }
+        },
+
+        // 加载退货列表
+        loadReturnList() {
+            this.returnLoading = true;
+            const params = {
+                originalOrderId: this.returnSearchForm.originalOrderId,
+                drugName: this.returnSearchForm.drugName,
+                status: this.returnSearchForm.status,
+                pageNum: this.returnPageNum,
+                pageSize: this.returnPageSize
+            };
+
+            axios.get('/sales/return/list', { params })
+                .then(res => {
+                    this.returnLoading = false;
+                    if (res.data.code === 200) {
+                        this.returnTableData = res.data.data.records || [];
+                        this.returnTotal = res.data.data.total || 0;
+                    }
+                })
+                .catch(() => {
+                    this.returnLoading = false;
+                    this.$message.error('加载退货列表失败');
+                });
+        },
+
+        // 重置退货搜索
+        resetReturnSearch() {
+            this.returnSearchForm = {
+                originalOrderId: '',
+                drugName: '',
+                status: ''
+            };
+            this.returnPageNum = 1;
+            this.loadReturnList();
+        },
+
+        // 退货分页切换
+        handleReturnPageChange(val) {
+            this.returnPageNum = val;
+            this.loadReturnList();
+        },
+
+        // 审核退货
+        auditReturn(row, approved) {
+            const action = approved ? '通过' : '驳回';
+            this.$confirm(`确认${action}该退货申请？`, '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                const auditorId = localStorage.getItem('userId') || '';
+                
+                axios.post('/sales/return/audit', null, {
+                    params: {
+                        returnId: row.returnId,
+                        auditorId: auditorId,
+                        approved: approved,
+                        remark: approved ? '审核通过' : '审核驳回'
+                    }
+                })
+                    .then(res => {
+                        if (res.data.code === 200) {
+                            this.$message.success(`审核${action}成功`);
+                            this.loadReturnList();
+                            // 如果在订单列表页，也刷新订单列表
+                            if (this.activeMainTab === 'orders') {
+                                this.loadData();
+                            }
+                        } else {
+                            this.$message.error(res.data.msg || `审核${action}失败`);
+                        }
+                    })
+                    .catch(err => {
+                        this.$message.error(`审核${action}失败：` + (err.message || '网络错误'));
+                    });
+            }).catch(() => {
+                // 用户取消操作
+            });
+        },
+
+        // 查看退货详情
+        viewReturnDetail(row) {
+            this.$alert(
+                `<div style="text-align: left;">
+                    <p><strong>退货单号：</strong>${row.returnId}</p>
+                    <p><strong>原订单号：</strong>${row.originalOrderId}</p>
+                    <p><strong>药品名称：</strong>${row.drugName || '-'}</p>
+                    <p><strong>生产批号：</strong>${row.batchNo || '-'}</p>
+                    <p><strong>退货数量：</strong>${row.returnNum}</p>
+                    <p><strong>退款金额：</strong>¥${row.refundAmount}</p>
+                    <p><strong>退货原因：</strong>${row.returnReason || '-'}</p>
+                    <p><strong>状态：</strong>${row.status}</p>
+                    <p><strong>申请时间：</strong>${row.createTime}</p>
+                </div>`,
+                '退货详情',
+                {
+                    dangerouslyUseHTMLString: true,
+                    confirmButtonText: '关闭'
+                }
+            );
+        },
+
+        // 获取退货状态颜色
+        getReturnTypeColor(status) {
+            const map = {
+                '申请中': 'warning',
+                '已完成': 'success',
+                '已驳回': 'danger'
+            };
+            return map[status] || 'info';
         }
     }
 });
