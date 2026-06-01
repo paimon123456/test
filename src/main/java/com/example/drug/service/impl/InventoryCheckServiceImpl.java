@@ -142,12 +142,16 @@ public class InventoryCheckServiceImpl implements InventoryCheckService {
                 
                 // 如果有差异，调整库存
                 if (check.getDiffNum() != null && check.getDiffNum() != 0) {
-                    // 查询对应的库存记录
+                    // 查询对应的库存记录。同一种药品可能存在多个批次，不能使用 selectOne。
                     LambdaQueryWrapper<Inventory> wrapper = new LambdaQueryWrapper<>();
                     wrapper.eq(Inventory::getDrugId, check.getDrugId());
-                    // TODO: 需要根据实际情况匹配正确的库存记录（批号等）
                     
-                    Inventory inventory = inventoryMapper.selectOne(wrapper);
+                    List<Inventory> inventories = inventoryMapper.selectList(wrapper);
+                    Inventory inventory = findInventoryForCheck(check, inventories);
+                    if (inventory == null) {
+                        return Result.fail("同一药品存在多条库存记录，无法确定要调整哪一条，请按批次/库存记录重新创建盘点单");
+                    }
+
                     if (inventory != null) {
                         inventory.setStockNum(check.getActualStock());
                         updateInventoryStatus(inventory);
@@ -209,6 +213,30 @@ public class InventoryCheckServiceImpl implements InventoryCheckService {
             return Result.fail("盘点单不存在");
         }
         return Result.success(check);
+    }
+
+    /**
+     * 盘点表当前只保存 drugId 和 systemStock，没有保存 inventoryId 或 batchNo。
+     * 这里优先用系统库存数定位创建盘点单时对应的库存记录，避免同药品多批次时 selectOne 报错。
+     */
+    private Inventory findInventoryForCheck(InventoryCheck check, List<Inventory> inventories) {
+        if (inventories == null || inventories.isEmpty()) {
+            return null;
+        }
+        if (inventories.size() == 1) {
+            return inventories.get(0);
+        }
+
+        Inventory matched = null;
+        for (Inventory inventory : inventories) {
+            if (Objects.equals(inventory.getStockNum(), check.getSystemStock())) {
+                if (matched != null) {
+                    return null;
+                }
+                matched = inventory;
+            }
+        }
+        return matched;
     }
     
     /**

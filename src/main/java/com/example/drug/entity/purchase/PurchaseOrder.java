@@ -67,7 +67,37 @@ public class PurchaseOrder implements Serializable {
     // 审核人姓名
     @TableField(exist = false)
     private String auditorName;
+    // 供应商联系人
+    @TableField(exist = false)
+    private String supplierContact;
+    // 供应商电话
+    @TableField(exist = false)
+    private String supplierPhone;
     // 采购明细列表
     @TableField(exist = false)
     private List<PurchaseItem> items;
+    // 总数量（兼容前端）
+    @TableField(exist = false)
+    private Integer totalNum;
+    // 实付金额（兼容前端）
+    @TableField(exist = false)
+    private BigDecimal payAmount;
+    // 支付方式（兼容前端）
+    @TableField(exist = false)
+    private String payType;
+    // 订单时间（兼容前端）
+    @TableField(exist = false)
+    private Date orderTime;
+    // 审核人ID（兼容前端）
+    @TableField(exist = false)
+    private String reviewerId;
+    // 审核时间（兼容前端）
+    @TableField(exist = false)
+    private Date reviewTime;
+    // 审核意见（兼容前端）
+    @TableField(exist = false)
+    private String reviewRemark;
+    // 优惠（兼容前端）
+    @TableField(exist = false)
+    private BigDecimal discount;
 }

@@ -15,11 +15,13 @@ import java.util.List;
 public interface PurchaseOrderMapper extends BaseMapper<PurchaseOrder> {
     
     /**
-     * 查询采购订单列表（关联查询）
+     * 查询采购订单列表（多条件组合查询）
      */
     List<PurchaseOrder> selectPurchaseOrderList(@Param("orderNo") String orderNo,
                                                 @Param("supplierId") String supplierId,
+                                                @Param("operatorId") String operatorId,
                                                 @Param("status") String status,
+                                                @Param("drugName") String drugName,
                                                 @Param("startDate") String startDate,
                                                 @Param("endDate") String endDate);
     

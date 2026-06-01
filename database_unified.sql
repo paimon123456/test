@@ -72,9 +72,11 @@ CREATE TABLE drug_info (
     approval_no VARCHAR(50) NOT NULL COMMENT '批准文号',
     category VARCHAR(20) NOT NULL COMMENT '分类：处方药/OTC/器械/保健品',
     medical_insurance VARCHAR(20) COMMENT '医保类型：甲类/乙类/非医保',
+    expiry_date DATE COMMENT '有效期',
     purchase_price DECIMAL(10,2) COMMENT '采购价',
     retail_price DECIMAL(10,2) COMMENT '零售价',
     member_price DECIMAL(10,2) COMMENT '会员价',
+    expiry_days INT DEFAULT 365 COMMENT '有效期天数',
     status TINYINT DEFAULT 1 COMMENT '状态 1在售 0停售',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -532,12 +534,30 @@ CREATE TABLE sys_log (
     user_id VARCHAR(32) NOT NULL COMMENT '操作人ID',
     username VARCHAR(50) NOT NULL COMMENT '操作人姓名',
     content TEXT NOT NULL COMMENT '操作内容',
+    result VARCHAR(10) DEFAULT '成功' COMMENT '执行结果：成功/失败',
     ip VARCHAR(50) COMMENT 'IP地址',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
     KEY idx_user (user_id),
     KEY idx_module (module),
     KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块-操作日志';
+
+-- 异常日志表
+CREATE TABLE exception_log (
+    exception_id VARCHAR(32) NOT NULL COMMENT '异常ID' PRIMARY KEY,
+    exception_type VARCHAR(200) NOT NULL COMMENT '异常类型',
+    error_message TEXT NOT NULL COMMENT '错误信息',
+    stack_trace LONGTEXT COMMENT '异常堆栈',
+    request_url VARCHAR(500) COMMENT '请求URL',
+    request_method VARCHAR(10) COMMENT '请求方式：GET/POST等',
+    user_id VARCHAR(32) COMMENT '操作人ID',
+    username VARCHAR(50) COMMENT '操作人姓名',
+    ip VARCHAR(50) COMMENT 'IP地址',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发生时间',
+    KEY idx_exception_type (exception_type),
+    KEY idx_create_time (create_time),
+    KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块12】系统日志模块-异常日志';
 
 -- ============================================
 -- 数据迁移示例 (如果需要从旧表迁移数据)
@@ -613,10 +633,18 @@ INSERT INTO drug_info (drug_id, drug_name, generic_name, specification, unit, ma
 ('3', '维生素C片', '维生素C', '100mg*100片', '瓶', '华中药业股份有限公司', '国药准字H42021869', 'OTC', '甲类', 5.00, 8.00, 1);
 
 -- 插入示例库存
-INSERT INTO drug_inventory (inventory_id, drug_id, batch_no, production_date, expiry_date, stock_num, warehouse_id, location, status) VALUES
-('inv001', '1', 'B20240101', '2024-01-01', '2026-01-01', 500, 'a001000000000000000000000000001', 'A区-A01-01', '正常'),
-('inv002', '2', 'C20240115', '2024-01-15', '2026-01-15', 300, 'a001000000000000000000000000001', 'A区-A01-02', '正常'),
-('inv003', '3', 'D20240301', '2024-03-01', '2026-03-01', 1000, 'a001000000000000000000000000002', 'A区-A01-01', '正常');
+INSERT INTO drug_inventory (inventory_id, drug_id, batch_no, production_date, expiry_date, stock_num, warehouse_id, location, min_stock, status) VALUES
+('inv001', '1', 'B20240101', '2024-01-01', '2026-01-01', 500, 'a001000000000000000000000000001', 'A区-A01-01', 100, '正常'),
+('inv002', '2', 'C20240115', '2024-01-15', '2026-01-15', 300, 'a001000000000000000000000000001', 'A区-A01-02', 50, '正常'),
+('inv003', '3', 'D20240301', '2024-03-01', '2026-03-01', 1000, 'a001000000000000000000000000002', 'A区-A01-01', 200, '正常'),
+-- 新增更多未过期库存数据
+('inv004', '1', 'B20240601', '2024-06-01', '2026-06-01', 800, 'a001000000000000000000000000001', 'B区-B01-01', 100, '正常'),
+('inv005', '2', 'C20240701', '2024-07-01', '2026-07-01', 150, 'a001000000000000000000000000002', 'A区-A01-01', 50, '正常'),
+('inv006', '3', 'D20240801', '2024-08-01', '2026-08-01', 600, 'a001000000000000000000000000001', 'C区-C01-01', 200, '正常'),
+-- 低库存预警测试数据（stock_num < min_stock）
+('inv007', '1', 'B20240901', '2024-09-01', '2026-09-01', 30, 'a001000000000000000000000000002', 'B区-B01-02', 100, '正常'),
+('inv008', '2', 'C20241001', '2024-10-01', '2026-10-01', 20, 'a001000000000000000000000000001', 'C区-C01-02', 50, '正常'),
+('inv009', '3', 'D20241101', '2024-11-01', '2026-11-01', 80, 'a001000000000000000000000000002', 'B区-B01-01', 200, '正常');
 
 -- ============================================
 -- 【新增】测试数据 - 供应商管理
@@ -665,14 +693,14 @@ INSERT INTO purchase_item (item_id, order_id, drug_id, purchase_num, purchase_pr
 
 -- 插入采购入库单
 INSERT INTO purchase_in (in_id, in_no, order_id, supplier_id, operator_id, warehouse_id, total_amount, status, in_time) VALUES
-('in001', 'IN20240508001', 'po001', 'sup001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
-('in002', 'IN20240512001', 'po002', 'sup002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
+('IN001', 'IN20240508001', 'PO001', 'S001', '1', 'a001000000000000000000000000001', 4250.00, '已完成', '2024-05-08 15:00:00'),
+('IN002', 'IN20240512001', 'PO002', 'S002', '1', 'a001000000000000000000000000001', 1800.00, '已完成', '2024-05-12 14:30:00');
 
 -- 插入入库明细
 INSERT INTO purchase_in_item (in_item_id, in_id, item_id, drug_id, batch_no, production_date, expiry_date, 
     in_num, purchase_price, subtotal, warehouse_id, location, operator_id) VALUES
-('ini001', 'in001', 'pi001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
-('ini002', 'in002', 'pi002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
+('INI001', 'IN001', 'PI001', '1', 'B20240501', '2024-05-01', '2026-05-01', 500, 8.50, 4250.00, 'a001000000000000000000000000001', 'A区-A01-01', '1'),
+('INI002', 'IN002', 'PI002', '2', 'C20240505', '2024-05-05', '2026-05-05', 300, 6.00, 1800.00, 'a001000000000000000000000000001', 'A区-A01-02', '1');
 
 -- ============================================
 -- 【新增】测试数据 - 会员、销售订单、盘点、退货
@@ -720,10 +748,8 @@ WHERE member_price IS NULL AND retail_price IS NOT NULL;
 -- ============================================
 -- 初始化药品价格数据（从 drug_info 同步）
 -- ============================================
+-- 初始化数据（使用 REPLACE 去掉连字符，生成 32 位）
 INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_price, operator, update_time)
-SELECT UUID(), drug_id, purchase_price, retail_price, member_price, '系统初始化', NOW()
-FROM drug_info
-WHERE status = 1
-AND NOT EXISTS (SELECT 1 FROM drug_price WHERE drug_price.drug_id = drug_info.drug_id);
-
-
+SELECT REPLACE(UUID(), '-', ''), drug_id, purchase_price, retail_price,
+       IFNULL(member_price, ROUND(retail_price * 0.95, 2)), '系统初始化', NOW()
+FROM drug_info WHERE status = 1;

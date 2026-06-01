@@ -6,8 +6,6 @@ import com.example.drug.util.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/drug")
 public class DrugController {
@@ -21,7 +19,7 @@ public class DrugController {
             System.out.println("接收到的药品数据：" + drug);
             // 设置药品ID
             if (drug.getDrugId() == null || drug.getDrugId().isEmpty()) {
-                drug.setDrugId(UUID.randomUUID().toString().replace("-", ""));
+                drug.setDrugId(drugService.generateNextDrugId());
             }
             boolean success = drugService.save(drug);
             System.out.println("保存结果：" + success);
@@ -34,8 +32,10 @@ public class DrugController {
     }
 
     @GetMapping("/list")
-    public Result list() {
-        return Result.success(drugService.list());
+    public Result list(@RequestParam(required = false) String drugName,
+                       @RequestParam(defaultValue = "1") Integer pageNum,
+                       @RequestParam(defaultValue = "10") Integer pageSize) {
+        return drugService.list(drugName, pageNum, pageSize);
     }
 
     @PostMapping("/update")

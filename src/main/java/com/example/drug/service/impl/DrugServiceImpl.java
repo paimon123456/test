@@ -1,17 +1,23 @@
 package com.example.drug.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.drug.entity.Drug;
 import com.example.drug.entity.inventory.Inventory;
 import com.example.drug.mapper.DrugMapper;
 import com.example.drug.mapper.InventoryMapper;
 import com.example.drug.service.DrugService;
+import com.example.drug.util.Result;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DrugServiceImpl extends ServiceImpl<DrugMapper, Drug> implements DrugService {
@@ -49,6 +55,24 @@ public class DrugServiceImpl extends ServiceImpl<DrugMapper, Drug> implements Dr
     }
 
     @Override
+    public String generateNextDrugId() {
+        List<Drug> list = this.list();
+        int max = 0;
+        for (Drug d : list) {
+            String id = d.getDrugId();
+            if (id != null) {
+                try {
+                    int num = Integer.parseInt(id);
+                    if (num > max) max = num;
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+        return String.valueOf(max + 1);
+    }
+
+    @Override
     public List<Drug> getExpiringDrugs(Integer days) {
         // 从库存表查询近效期药品
         List<Inventory> expiringInventory = inventoryMapper.selectNearExpiry(days);
@@ -67,5 +91,29 @@ public class DrugServiceImpl extends ServiceImpl<DrugMapper, Drug> implements Dr
         
         // 查询药品信息
         return this.listByIds(drugIds);
+    }
+
+    @Override
+    public Result list(String drugName, Integer pageNum, Integer pageSize) {
+        PageHelper.startPage(pageNum != null ? pageNum : 1, pageSize != null ? pageSize : 10);
+        
+        LambdaQueryWrapper<Drug> wrapper = new LambdaQueryWrapper<>();
+        if (drugName != null && !drugName.trim().isEmpty()) {
+            wrapper.like(Drug::getDrugName, drugName)
+                   .or()
+                   .like(Drug::getGenericName, drugName)
+                   .or()
+                   .like(Drug::getDrugId, drugName);
+        }
+        wrapper.orderByDesc(Drug::getCreateTime);
+        
+        List<Drug> list = this.list(wrapper);
+        PageInfo<Drug> pageInfo = new PageInfo<>(list);
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("total", pageInfo.getTotal());
+        data.put("records", pageInfo.getList());
+        
+        return Result.success(data);
     }
 }

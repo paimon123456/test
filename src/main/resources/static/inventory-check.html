@@ -22,13 +22,13 @@
         <el-table-column prop="systemStock" label="系统库存" width="100"></el-table-column>
         <el-table-column prop="actualStock" label="实际库存" width="100">
             <template slot-scope="scope">
-                <span v-if="scope.row.actualStock">{{ scope.row.actualStock }}</span>
+                <span v-if="scope.row.actualStock !== null && scope.row.actualStock !== undefined">{{ scope.row.actualStock }}</span>
                 <el-button v-else size="mini" @click="inputStock(scope.row)">录入</el-button>
             </template>
         </el-table-column>
         <el-table-column prop="diffNum" label="差异" width="100">
             <template slot-scope="scope">
-                <span v-if="scope.row.diffNum" :style="{color: scope.row.diffNum < 0 ? 'red' : 'green'}">
+                <span v-if="scope.row.diffNum !== null && scope.row.diffNum !== undefined" :style="{color: scope.row.diffNum < 0 ? 'red' : 'green'}">
                     {{ scope.row.diffNum > 0 ? '+' : '' }}{{ scope.row.diffNum }}
                 </span>
             </template>
@@ -42,7 +42,7 @@
         </el-table-column>
         <el-table-column label="操作" width="150">
             <template slot-scope="scope">
-                <el-button v-if="scope.row.auditStatus === '待审核' && scope.row.actualStock" 
+                <el-button v-if="scope.row.auditStatus === '待审核' && scope.row.actualStock !== null && scope.row.actualStock !== undefined" 
                            size="mini" type="success" @click="auditCheck(scope.row, true)">通过</el-button>
                 <el-button v-if="scope.row.auditStatus === '待审核'" 
                            size="mini" type="danger" @click="auditCheck(scope.row, false)">驳回</el-button>
@@ -76,7 +76,7 @@
     <el-dialog title="录入实际库存" :visible.sync="inputDialogVisible" width="40%">
         <el-form :model="inputForm" label-width="100px">
             <el-form-item label="系统库存">
-                <el-input :value="currentCheck.systemStock" disabled></el-input>
+                <el-input :value="currentCheck ? currentCheck.systemStock : ''" disabled></el-input>
             </el-form-item>
             <el-form-item label="实际库存">
                 <el-input-number v-model="inputForm.actualStock" :min="0"></el-input-number>
@@ -105,7 +105,7 @@ new Vue({
         inputDialogVisible: false,
         createForm: { checkType: '全盘', warehouseId: '' },
         inputForm: { actualStock: 0 },
-        currentCheck: null,
+        currentCheck: {},
         checkerId: '1'
     },
     mounted() {
