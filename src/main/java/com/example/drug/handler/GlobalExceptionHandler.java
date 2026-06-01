@@ -1,5 +1,6 @@
 package com.example.drug.handler;
 
+import com.example.drug.common.IpUtil;
 import com.example.drug.common.UUIDUtil;
 import com.example.drug.entity.ExceptionLog;
 import com.example.drug.service.ExceptionLogService;
@@ -40,10 +41,10 @@ public class GlobalExceptionHandler {
             exceptionLog.setRequestMethod(request.getMethod());
 
             Object userId = request.getSession().getAttribute("userId");
-            Object username = request.getSession().getAttribute("username");
+            Object username = request.getSession().getAttribute("userName");
             exceptionLog.setUserId(userId != null ? userId.toString() : "");
             exceptionLog.setUsername(username != null ? username.toString() : "未知用户");
-            exceptionLog.setIp(request.getRemoteAddr());
+            exceptionLog.setIp(IpUtil.getClientIp(request));
             exceptionLog.setCreateTime(new Date());
 
             exceptionLogService.save(exceptionLog);

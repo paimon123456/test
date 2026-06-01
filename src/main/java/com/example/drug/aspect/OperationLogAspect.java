@@ -1,5 +1,6 @@
 package com.example.drug.aspect;
 
+import com.example.drug.common.IpUtil;
 import com.example.drug.common.UUIDUtil;
 import com.example.drug.entity.OperationLog;
 import com.example.drug.service.OperationLogService;
@@ -101,9 +102,9 @@ public class OperationLogAspect {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
-            log.setIp(request.getRemoteAddr());
+            log.setIp(IpUtil.getClientIp(request));
             Object userId = request.getSession().getAttribute("userId");
-            Object username = request.getSession().getAttribute("username");
+            Object username = request.getSession().getAttribute("userName");
             log.setUserId(userId != null ? userId.toString() : "");
             log.setUsername(username != null ? username.toString() : "未知用户");
         }
