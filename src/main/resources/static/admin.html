@@ -227,7 +227,7 @@
         <div class="card">
             <div class="card-title"><i class="el-icon-s-operation"></i> 账号列表</div>
             <el-table :data="list" style="width: 100%" stripe>
-                <el-table-column prop="userId" label="ID" width="80"></el-table-column>
+                <el-table-column type="index" label="ID" width="80" :index="(index) => index + 1"></el-table-column>
                 <el-table-column prop="username" label="账号" width="150"></el-table-column>
                 <el-table-column prop="realName" label="真实姓名" width="150"></el-table-column>
                 <el-table-column prop="role" label="角色" width="120">

@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.drug.common.UUIDUtil;
 import com.example.drug.dto.SalesReturnDTO;
 import com.example.drug.entity.inventory.Inventory;
+import com.example.drug.entity.sales.MemberInfo;
 import com.example.drug.entity.sales.SalesItem;
 import com.example.drug.entity.sales.SalesOrder;
 import com.example.drug.entity.sales.SalesReturn;
 import com.example.drug.mapper.InventoryMapper;
+import com.example.drug.mapper.MemberInfoMapper;
 import com.example.drug.mapper.SalesItemMapper;
 import com.example.drug.mapper.SalesOrderMapper;
 import com.example.drug.mapper.SalesReturnMapper;
@@ -37,6 +39,9 @@ public class SalesReturnServiceImpl implements SalesReturnService {
     
     @Autowired
     private InventoryMapper inventoryMapper;
+    
+    @Autowired
+    private MemberInfoMapper memberInfoMapper;
     
     /**
      * 创建退货申请
@@ -141,6 +146,41 @@ public class SalesReturnServiceImpl implements SalesReturnService {
                 if (order != null) {
                     order.setStatus("已退货");
                     salesOrderMapper.updateById(order);
+                    
+                    // 处理会员积分：退还已用积分、扣除已获积分
+                    if (order.getMemberId() != null && !order.getMemberId().isEmpty()) {
+                        MemberInfo member = memberInfoMapper.selectById(order.getMemberId());
+                        if (member != null && order.getTotalAmount() != null 
+                                && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
+                            // 计算退货比例 = 退款金额 / 订单应收金额
+                            BigDecimal refundRatio = salesReturn.getRefundAmount()
+                                    .divide(order.getTotalAmount(), 4, BigDecimal.ROUND_HALF_UP);
+                            
+                            // 1. 扣除已获积分（购买时按实收金额每1元积1分）
+                            int earnedPoints = order.getPayAmount() != null ? order.getPayAmount().intValue() : 0;
+                            int earnedPointsToDeduct = new BigDecimal(earnedPoints)
+                                    .multiply(refundRatio)
+                                    .setScale(0, BigDecimal.ROUND_HALF_UP)
+                                    .intValue();
+                            
+                            // 2. 退还已用积分（从discount推导：discount元 = discount*100积分）
+                            int usedPoints = order.getDiscount() != null 
+                                    ? order.getDiscount().multiply(new BigDecimal(100)).intValue() : 0;
+                            int usedPointsToRefund = new BigDecimal(usedPoints)
+                                    .multiply(refundRatio)
+                                    .setScale(0, BigDecimal.ROUND_HALF_UP)
+                                    .intValue();
+                            
+                            // 积分变动 = 退还已用积分 - 扣除已获积分
+                            int pointsChange = usedPointsToRefund - earnedPointsToDeduct;
+                            member.setPoints(member.getPoints() + pointsChange);
+                            // 防止积分变为负数
+                            if (member.getPoints() < 0) {
+                                member.setPoints(0);
+                            }
+                            memberInfoMapper.updateById(member);
+                        }
+                    }
                 }
                 
                 return Result.success("审核通过，库存已回补");

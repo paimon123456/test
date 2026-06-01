@@ -6,7 +6,7 @@ import com.example.drug.util.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/permission")
@@ -14,6 +14,23 @@ public class PermissionController {
 
     @Autowired
     private SysPermissionMapper sysPermissionMapper;
+
+    private String generateNextPermId() {
+        List<SysPermission> list = sysPermissionMapper.selectList(null);
+        int max = 0;
+        for (SysPermission p : list) {
+            String id = p.getPermId();
+            if (id != null) {
+                try {
+                    int num = Integer.parseInt(id);
+                    if (num > max) max = num;
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+        return String.valueOf(max + 1);
+    }
 
     @GetMapping("/list")
     public Result list() {
@@ -24,7 +41,7 @@ public class PermissionController {
     public Result add(@RequestBody SysPermission permission) {
         try {
             if (permission.getPermId() == null || permission.getPermId().isEmpty()) {
-                permission.setPermId(UUID.randomUUID().toString().replace("-", ""));
+                permission.setPermId(generateNextPermId());
             }
             sysPermissionMapper.insert(permission);
             return Result.success("添加成功");

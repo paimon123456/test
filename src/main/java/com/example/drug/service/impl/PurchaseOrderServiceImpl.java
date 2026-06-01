@@ -8,6 +8,7 @@ import com.example.drug.entity.Drug;
 import com.example.drug.entity.purchase.InventoryReserve;
 import com.example.drug.entity.purchase.PurchaseItem;
 import com.example.drug.entity.purchase.PurchaseOrder;
+import com.example.drug.entity.supplier.Supplier;
 import com.example.drug.mapper.*;
 import com.example.drug.service.purchase.PurchaseOrderService;
 import com.example.drug.util.Result;
@@ -36,7 +37,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     
     @Autowired
     private DrugMapper drugMapper;
-    
+
+    @Autowired
+    private SupplierMapper supplierMapper;
+
     /**
      * 创建采购单
      */
@@ -46,6 +50,15 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         try {
             if (dto.getItems() == null || dto.getItems().isEmpty()) {
                 return Result.fail("请添加采购明细");
+            }
+
+            // 验证供应商是否存在及合作状态
+            Supplier supplier = supplierMapper.selectById(dto.getSupplierId());
+            if (supplier == null) {
+                return Result.fail("供应商不存在");
+            }
+            if (!"合作中".equals(supplier.getCooperationStatus())) {
+                return Result.fail("该供应商当前合作状态为【" + supplier.getCooperationStatus() + "】，无法创建采购单");
             }
             
             // 生成采购单号

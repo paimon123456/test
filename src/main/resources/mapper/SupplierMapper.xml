@@ -13,6 +13,7 @@
             END as near_expiry
         FROM supplier s
         <where>
+            AND s.status = 1
             <if test="supplierName != null and supplierName != ''">
                 AND s.supplier_name LIKE CONCAT('%', #{supplierName}, '%')
             </if>
@@ -21,9 +22,6 @@
             </if>
             <if test="cooperationStatus != null and cooperationStatus != ''">
                 AND s.cooperation_status = #{cooperationStatus}
-            </if>
-            <if test="status != null">
-                AND s.status = #{status}
             </if>
         </where>
         ORDER BY s.create_time DESC

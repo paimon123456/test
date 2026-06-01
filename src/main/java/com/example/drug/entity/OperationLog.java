@@ -17,7 +17,10 @@ public class OperationLog {
     private String userId;
     private String username;
     private String content;
+    
+    // 执行结果：成功/失败
     private String result;
+    
     private String ip;
     private Date createTime;
     
