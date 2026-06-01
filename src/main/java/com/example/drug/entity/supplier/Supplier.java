@@ -49,6 +49,8 @@ public class Supplier implements Serializable {
     private String cooperationStatus;
     // 信用等级：A/B/C/D
     private String creditLevel;
+    // 供应商评级：1-5星
+    private Integer rating;
     // 备注
     private String remark;
     // 状态：1启用 0停用

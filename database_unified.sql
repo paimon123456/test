@@ -742,6 +742,16 @@ INSERT INTO sales_return (return_id, original_order_id, drug_id, batch_no, retur
 -- ============================================
 -- 初始化药品会员价数据
 -- ============================================
+-- ============================================
+-- 供应商评级字段（1-5星）
+-- ============================================
+ALTER TABLE supplier ADD COLUMN rating INT DEFAULT 0 COMMENT '供应商评级 0未评分/1-5星';
+UPDATE supplier SET rating = 5 WHERE supplier_id = 'S001';
+UPDATE supplier SET rating = 4 WHERE supplier_id = 'S002';
+UPDATE supplier SET rating = 3 WHERE supplier_id = 'S003';
+UPDATE supplier SET rating = 5 WHERE supplier_id = 'S004';
+UPDATE supplier SET rating = 4 WHERE supplier_id = 'S005';
+
 UPDATE drug_info SET member_price = ROUND(retail_price * 0.95, 2)
 WHERE member_price IS NULL AND retail_price IS NOT NULL;
 

@@ -59,6 +59,7 @@ public class SupplierServiceImpl implements SupplierService {
             supplier.setQualificationStatus(dto.getQualificationStatus() != null ? dto.getQualificationStatus() : "正常");
             supplier.setCooperationStatus(dto.getCooperationStatus() != null ? dto.getCooperationStatus() : "合作中");
             supplier.setCreditLevel(dto.getCreditLevel() != null ? dto.getCreditLevel() : "B");
+            supplier.setRating(dto.getRating() != null ? dto.getRating() : 0);
             supplier.setRemark(dto.getRemark());
             supplier.setStatus(dto.getStatus() != null ? dto.getStatus() : 1);
             supplier.setCreateTime(new Date());
@@ -105,6 +106,7 @@ public class SupplierServiceImpl implements SupplierService {
             supplier.setQualificationStatus(dto.getQualificationStatus());
             supplier.setCooperationStatus(dto.getCooperationStatus());
             supplier.setCreditLevel(dto.getCreditLevel());
+            supplier.setRating(dto.getRating());
             supplier.setRemark(dto.getRemark());
             if (dto.getStatus() != null) {
                 supplier.setStatus(dto.getStatus());
