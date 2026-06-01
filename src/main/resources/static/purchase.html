@@ -349,9 +349,9 @@ new Vue({
             });
         },
         loadDrugs() {
-            axios.get('/drug/list').then(res => {
+            axios.get('/drug/list?pageSize=1000').then(res => {
                 if (res.data.code === 200) {
-                    this.drugList = res.data.data || [];
+                    this.drugList = (res.data.data && res.data.data.records) || [];
                 }
             });
         },
