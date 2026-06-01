@@ -509,6 +509,39 @@ CREATE TABLE price_approve (
     KEY idx_drug (drug_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块10】价格管理-调价审批表';
 
+-- 价格预警配置表
+CREATE TABLE price_alert_config (
+    config_id VARCHAR(32) NOT NULL COMMENT '配置ID' PRIMARY KEY,
+    alert_type VARCHAR(30) NOT NULL COMMENT '预警类型: SELL_BELOW_PURCHASE(售价低于进价)/PURCHASE_SURGE(进价异常上涨)',
+    threshold_percent DECIMAL(5,2) NOT NULL COMMENT '阈值百分比',
+    enable_status TINYINT DEFAULT 1 COMMENT '是否启用: 1启用 0停用',
+    remark VARCHAR(200) COMMENT '备注说明',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    KEY idx_alert_type (alert_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块10】价格管理-价格预警配置表';
+
+-- 价格预警日志表
+CREATE TABLE price_alert_log (
+    alert_id VARCHAR(32) NOT NULL COMMENT '预警ID' PRIMARY KEY,
+    drug_id VARCHAR(32) NOT NULL COMMENT '药品ID',
+    alert_type VARCHAR(30) NOT NULL COMMENT '预警类型',
+    alert_level VARCHAR(10) DEFAULT '一般' COMMENT '严重级别: 一般/严重',
+    alert_content TEXT NOT NULL COMMENT '预警内容',
+    current_purchase_price DECIMAL(10,2) COMMENT '当前进价',
+    current_retail_price DECIMAL(10,2) COMMENT '当前售价',
+    threshold_percent DECIMAL(5,2) COMMENT '触发阈值',
+    handle_status VARCHAR(10) DEFAULT '未处理' COMMENT '处理状态: 未处理/已处理/已忽略',
+    handler VARCHAR(50) COMMENT '处理人',
+    handle_time DATETIME COMMENT '处理时间',
+    handle_remark VARCHAR(500) COMMENT '处理备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '预警时间',
+    KEY idx_drug (drug_id),
+    KEY idx_alert_type (alert_type),
+    KEY idx_handle_status (handle_status),
+    KEY idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='【模块10】价格管理-价格预警日志表';
+
 -- ============================================
 -- 【合并】订单查询表 (原有)
 -- ============================================
@@ -752,3 +785,11 @@ INSERT INTO drug_price (price_id, drug_id, purchase_price, retail_price, member_
 SELECT REPLACE(UUID(), '-', ''), drug_id, purchase_price, retail_price,
        IFNULL(member_price, ROUND(retail_price * 0.95, 2)), '系统初始化', NOW()
 FROM drug_info WHERE status = 1;
+
+-- ============================================
+-- 初始化价格预警配置
+-- ============================================
+INSERT INTO price_alert_config (config_id, alert_type, threshold_percent, enable_status, remark, create_time) VALUES
+(REPLACE(UUID(), '-', ''), 'SELL_BELOW_PURCHASE', 0.00, 1, '售价低于进价预警：售价 ≤ 进价即触发', NOW()),
+(REPLACE(UUID(), '-', ''), 'PURCHASE_SURGE', 20.00, 1, '进价异常上涨预警：进价上涨超过20%触发', NOW()),
+(REPLACE(UUID(), '-', ''), 'RETAIL_SURGE', 50.00, 1, '售价异常上涨预警：零售价上涨超过50%触发', NOW());
