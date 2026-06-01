@@ -8,9 +8,9 @@ spring:
     date-format: yyyy-MM-dd
     time-zone: GMT+8
   datasource:
-    url: jdbc:mysql://localhost:3306/drug_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false
+    url: jdbc:mysql://localhost:3306/drug_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: 10111011
+    password: 20050510nzay
     driver-class-name: com.mysql.cj.jdbc.Driver
   # 开启定时任务（效期提醒用）
   task:

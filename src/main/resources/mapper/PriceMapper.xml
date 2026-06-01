@@ -58,14 +58,16 @@
 
     <update id="updateDrugPrice" parameterType="com.example.drug.entity.price.DrugPrice">
         UPDATE drug_price
-        SET purchase_price = #{purchasePrice},
-            retail_price = #{retailPrice},
-            member_price = #{memberPrice},
-            promo_price = #{promoPrice},
-            promo_start = #{promoStart},
-            promo_end = #{promoEnd},
-            operator = #{operator},
+        <set>
+            <if test="purchasePrice != null">purchase_price = #{purchasePrice},</if>
+            <if test="retailPrice != null">retail_price = #{retailPrice},</if>
+            <if test="memberPrice != null">member_price = #{memberPrice},</if>
+            <if test="promoPrice != null">promo_price = #{promoPrice},</if>
+            <if test="promoStart != null">promo_start = #{promoStart},</if>
+            <if test="promoEnd != null">promo_end = #{promoEnd},</if>
+            <if test="operator != null">operator = #{operator},</if>
             update_time = NOW()
+        </set>
         WHERE drug_id = #{drugId}
     </update>
 
