@@ -191,6 +191,10 @@
                             <el-option label="合作中" :value="1"></el-option>
                             <el-option label="暂停合作" :value="0"></el-option>
                         </el-select>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 14px; color: #606266;">评级：</span>
+                            <el-rate v-model="supplierForm.rating" :max="5" show-score style="flex: 1;"></el-rate>
+                        </div>
                         <el-button v-if="!editMode" type="primary" @click="addSupplier" icon="el-icon-plus">添加</el-button>
                         <el-button v-if="editMode" type="primary" @click="updateSupplier" icon="el-icon-check">保存</el-button>
                         <el-button v-if="editMode" @click="cancelEdit" icon="el-icon-close">取消</el-button>
@@ -211,6 +215,11 @@
                                 <span class="status-badge" :class="scope.row.status === 1 ? 'status-active' : 'status-inactive'">
                                     {{ scope.row.status === 1 ? '合作中' : '暂停' }}
                                 </span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="评级" width="160">
+                            <template slot-scope="scope">
+                                <el-rate v-model="scope.row.rating" :max="5" disabled show-score text-color="#ff9900"></el-rate>
                             </template>
                         </el-table-column>
                         <el-table-column label="操作" width="280" fixed="right">
@@ -325,7 +334,8 @@ new Vue({
             phone: '',
             businessLicense: '',
             gspCertNo: '',
-            status: 1
+            status: 1,
+            rating: 0
         },
         cooperationDialogVisible: false,
         cooperationList: [],
@@ -377,7 +387,8 @@ new Vue({
                 phone: row.phone || '',
                 businessLicense: row.businessLicense || '',
                 gspCertNo: row.gspCertNo || '',
-                status: row.status
+                status: row.status,
+                rating: row.rating || 0
             };
             window.scrollTo({ top: 0, behavior: 'smooth' });
         },
@@ -400,7 +411,7 @@ new Vue({
             this.supplierForm = {
                 supplierId: '', supplierCode: '', supplierName: '',
                 contact: '', phone: '', businessLicense: '',
-                gspCertNo: '', status: 1
+                gspCertNo: '', status: 1, rating: 0
             };
         },
         delSupplier(id) {

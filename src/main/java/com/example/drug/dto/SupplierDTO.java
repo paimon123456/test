@@ -27,6 +27,7 @@ public class SupplierDTO implements Serializable {
     private String qualificationStatus;
     private String cooperationStatus;
     private String creditLevel;
+    private Integer rating;
     private String remark;
     private Integer status;
 }

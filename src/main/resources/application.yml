@@ -2,20 +2,14 @@ server:
   port: 8080
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
   jackson:
-    date-format: yyyy-MM-dd
+    date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
   datasource:
     url: jdbc:mysql://localhost:3306/drug_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: 20050510nzay
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-  # 开启定时任务（效期提醒用）
-  task:
-    scheduling:
-      enabled: true
   # 禁用静态资源缓存（开发环境）
   web:
     resources:
@@ -38,7 +32,7 @@ logging:
   level:
     com.example.drug.mapper: debug
 
-# 日志保留策略配置（操作日志和异常日志自动清理）
+# 日志保留策略（操作日志和异常日志自动清理，单位：月）
 log:
   retain:
     months: 6
