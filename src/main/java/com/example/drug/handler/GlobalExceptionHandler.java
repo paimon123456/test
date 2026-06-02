@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
             Object userId = request.getSession().getAttribute("userId");
             Object username = request.getSession().getAttribute("userName");
             exceptionLog.setUserId(userId != null ? userId.toString() : "");
-            exceptionLog.setUsername(username != null ? username.toString() : "未知用户");
+            exceptionLog.setUsername(username != null ? username.toString() : "未登录");
             exceptionLog.setIp(IpUtil.getClientIp(request));
             exceptionLog.setCreateTime(new Date());
 

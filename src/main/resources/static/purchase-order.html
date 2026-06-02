@@ -82,8 +82,8 @@
             <div class="search-title">查询条件</div>
             <div class="search-form">
                 <div class="search-item">
-                    <label>订单号：</label>
-                    <el-input v-model="searchForm.orderId" placeholder="支持模糊匹配" clearable style="width: 180px;"></el-input>
+                    <label>采购单号：</label>
+                    <el-input v-model="searchForm.orderNo" placeholder="支持模糊匹配" clearable style="width: 180px;"></el-input>
                 </div>
                 <div class="search-item">
                     <label>供应商：</label>
@@ -91,24 +91,28 @@
                 </div>
                 <div class="search-item">
                     <label>采购员：</label>
-                    <el-input v-model="searchForm.purchaserId" placeholder="姓名" clearable style="width: 120px;"></el-input>
+                    <el-input v-model="searchForm.operatorId" placeholder="姓名" clearable style="width: 120px;"></el-input>
                 </div>
                 <div class="search-item">
                     <label>药品：</label>
-                    <el-input v-model="searchForm.drugName" placeholder="名称/编码" clearable style="width: 140px;"></el-input>
+                    <el-input v-model="searchForm.drugName" placeholder="药品名称" clearable style="width: 140px;"></el-input>
                 </div>
                 <div class="search-item">
                     <label>状态：</label>
-                    <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px;">
+                    <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px;">
                         <el-option label="待审核" value="待审核"></el-option>
-                        <el-option label="已审核" value="已审核"></el-option>
+                        <el-option label="已通过" value="已通过"></el-option>
+                        <el-option label="已驳回" value="已驳回"></el-option>
+                        <el-option label="已入库" value="已入库"></el-option>
                         <el-option label="已完成" value="已完成"></el-option>
                         <el-option label="已取消" value="已取消"></el-option>
                     </el-select>
                 </div>
                 <div class="search-item">
                     <label>日期范围：</label>
-                    <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width: 260px;"></el-date-picker>
+                    <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                        start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd" style="width: 260px;">
+                    </el-date-picker>
                 </div>
                 <div class="search-item">
                     <el-button type="primary" icon="el-icon-search" @click="search">查询</el-button>
@@ -142,7 +146,7 @@
             </div>
 
             <el-table :data="tableData" border v-loading="loading" @row-click="viewDetail" stripe>
-                <el-table-column prop="orderId" label="订单号" width="180" fixed></el-table-column>
+                <el-table-column prop="orderNo" label="采购单号" width="180" fixed></el-table-column>
                 <el-table-column prop="orderType" label="类型" width="80">
                     <template slot-scope="scope">
                         <span class="order-type type-purchase">采购</span>
@@ -154,31 +158,26 @@
                         <div style="font-size: 12px; color: #909399;">{{ scope.row.supplierPhone || '' }}</div>
                     </template>
                 </el-table-column>
-                <el-table-column prop="purchaserName" label="采购员" width="100"></el-table-column>
-                <el-table-column prop="totalNum" label="数量" width="80" align="center"></el-table-column>
+                <el-table-column prop="operatorName" label="采购员" width="100"></el-table-column>
+                <el-table-column prop="totalQuantity" label="数量" width="80" align="center"></el-table-column>
                 <el-table-column prop="totalAmount" label="应付" width="100" align="right">
                     <template slot-scope="scope">
                         <span class="amount">¥{{ scope.row.totalAmount }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="discount" label="优惠" width="90" align="right">
+                <el-table-column prop="discountAmount" label="优惠" width="90" align="right">
                     <template slot-scope="scope">
-                        <span class="amount-green">-¥{{ scope.row.discount || 0 }}</span>
+                        <span class="amount-green">-¥{{ scope.row.discountAmount || 0 }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="payAmount" label="实付" width="100" align="right">
+                <el-table-column prop="paidAmount" label="实付" width="100" align="right">
                     <template slot-scope="scope">
-                        <span class="amount amount-red">¥{{ scope.row.payAmount }}</span>
+                        <span class="amount amount-red">¥{{ scope.row.paidAmount || 0 }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="payType" label="支付方式" width="100" align="center">
-                    <template slot-scope="scope">
-                        <el-tag size="mini" type="info">{{ scope.row.payType || '-' }}</el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="orderTime" label="下单时间" width="160"></el-table-column>
-                <el-table-column prop="reviewerName" label="审核人" width="100">
-                    <template slot-scope="scope">{{ scope.row.reviewerName || '-' }}</template>
+                <el-table-column prop="createTime" label="下单时间" width="160"></el-table-column>
+                <el-table-column prop="auditorName" label="审核人" width="100">
+                    <template slot-scope="scope">{{ scope.row.auditorName || '-' }}</template>
                 </el-table-column>
                 <el-table-column prop="status" label="状态" width="100" align="center">
                     <template slot-scope="scope">
@@ -225,7 +224,7 @@
                         <div class="detail-info">
                             <div class="info-item">
                                 <div class="info-label">订单号：</div>
-                                <div class="info-value">{{ currentOrder.orderId }}</div>
+                                <div class="info-value">{{ currentOrder.orderNo || currentOrder.orderId }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">订单类型：</div>
@@ -245,27 +244,27 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">采购员：</div>
-                                <div class="info-value">{{ currentOrder.purchaserName || '-' }}</div>
+                                <div class="info-value">{{ currentOrder.operatorName || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">下单时间：</div>
-                                <div class="info-value">{{ currentOrder.orderTime }}</div>
+                                <div class="info-value">{{ currentOrder.createTime }}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">支付方式：</div>
-                                <div class="info-value">{{ currentOrder.payType || '-' }}</div>
+                                <div class="info-label">期望到货：</div>
+                                <div class="info-value">{{ currentOrder.expectedDate || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">审核人：</div>
-                                <div class="info-value">{{ currentOrder.reviewerName || '-' }}</div>
+                                <div class="info-value">{{ currentOrder.auditorName || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">审核时间：</div>
-                                <div class="info-value">{{ currentOrder.reviewTime || '-' }}</div>
+                                <div class="info-value">{{ currentOrder.auditTime || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">审核意见：</div>
-                                <div class="info-value">{{ currentOrder.reviewRemark || '-' }}</div>
+                                <div class="info-value">{{ currentOrder.remark || '-' }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">订单状态：</div>
@@ -283,7 +282,7 @@
                         <div class="detail-info">
                             <div class="info-item">
                                 <div class="info-label">总数量：</div>
-                                <div class="info-value">{{ currentOrder.totalNum }} 件</div>
+                                <div class="info-value">{{ currentOrder.totalQuantity }} 件</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">应付金额：</div>
@@ -291,11 +290,11 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">优惠金额：</div>
-                                <div class="info-value amount-green">-¥{{ currentOrder.discount || 0 }}</div>
+                                <div class="info-value amount-green">-¥{{ currentOrder.discountAmount || 0 }}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">实付金额：</div>
-                                <div class="info-value amount amount-red">¥{{ currentOrder.payAmount }}</div>
+                                <div class="info-value amount amount-red">¥{{ currentOrder.paidAmount || 0 }}</div>
                             </div>
                         </div>
                     </div>
@@ -323,9 +322,9 @@
                         <div class="timeline-item">
                             <div class="timeline-dot active">✓</div>
                             <div class="timeline-content">
-                                <div class="timeline-time">{{ currentOrder.orderTime }}</div>
+                                <div class="timeline-time">{{ currentOrder.createTime }}</div>
                                 <div class="timeline-title">订单创建</div>
-                                <div class="timeline-desc">采购员 {{ currentOrder.purchaserName || '未知' }} 创建采购订单</div>
+                                <div class="timeline-desc">采购员 {{ currentOrder.operatorName || '未知' }} 创建采购订单</div>
                             </div>
                         </div>
                         <div class="timeline-item" v-if="currentOrder.status === '待审核'">
@@ -336,18 +335,26 @@
                                 <div class="timeline-desc">订单待管理员审核</div>
                             </div>
                         </div>
-                        <div class="timeline-item" v-if="currentOrder.status === '已审核' || currentOrder.status === '已完成'">
+                        <div class="timeline-item" v-if="currentOrder.status === '已通过' || currentOrder.status === '已入库' || currentOrder.status === '已完成'">
                             <div class="timeline-dot active">✓</div>
                             <div class="timeline-content">
-                                <div class="timeline-time">{{ currentOrder.reviewTime || '-' }}</div>
+                                <div class="timeline-time">{{ currentOrder.auditTime || '-' }}</div>
                                 <div class="timeline-title">审核通过</div>
-                                <div class="timeline-desc">审核人 {{ currentOrder.reviewerName || '未知' }} 审核通过{{ currentOrder.reviewRemark ? '，意见：' + currentOrder.reviewRemark : '' }}</div>
+                                <div class="timeline-desc">审核人 {{ currentOrder.auditorName || '未知' }} 审核通过{{ currentOrder.remark ? '，意见：' + currentOrder.remark : '' }}</div>
                             </div>
                         </div>
-                        <div class="timeline-item" v-if="currentOrder.status === '已完成'">
+                        <div class="timeline-item" v-if="currentOrder.status === '已驳回'">
+                            <div class="timeline-dot" style="background: #f56c6c;">✕</div>
+                            <div class="timeline-content">
+                                <div class="timeline-time">{{ currentOrder.auditTime || '-' }}</div>
+                                <div class="timeline-title">审核驳回</div>
+                                <div class="timeline-desc">审核人 {{ currentOrder.auditorName || '未知' }} 驳回了订单{{ currentOrder.remark ? '，原因：' + currentOrder.remark : '' }}</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item" v-if="currentOrder.status === '已完成' || currentOrder.status === '已入库'">
                             <div class="timeline-dot active">✓</div>
                             <div class="timeline-content">
-                                <div class="timeline-time">{{ currentOrder.orderTime }}</div>
+                                <div class="timeline-time">{{ currentOrder.deliveryDate || '-' }}</div>
                                 <div class="timeline-title">订单完成</div>
                                 <div class="timeline-desc">采购已完成，药品已入库</div>
                             </div>
@@ -357,7 +364,7 @@
                             <div class="timeline-content">
                                 <div class="timeline-time">-</div>
                                 <div class="timeline-title">订单取消</div>
-                                <div class="timeline-desc">订单已取消{{ currentOrder.reviewRemark ? '，原因：' + currentOrder.reviewRemark : '' }}</div>
+                                <div class="timeline-desc">订单已取消{{ currentOrder.remark ? '，原因：' + currentOrder.remark : '' }}</div>
                             </div>
                         </div>
                     </div>
@@ -386,9 +393,9 @@ new Vue({
         completedCount: 0,
         pendingCount: 0,
         searchForm: {
-            orderId: '',
+            orderNo: '',
             supplierId: '',
-            purchaserId: '',
+            operatorId: '',
             drugName: '',
             status: ''
         },
@@ -405,9 +412,9 @@ new Vue({
         loadData() {
             this.loading = true;
             const params = {
-                orderId: this.searchForm.orderId,
+                orderNo: this.searchForm.orderNo,
                 supplierId: this.searchForm.supplierId,
-                purchaserId: this.searchForm.purchaserId,
+                operatorId: this.searchForm.operatorId,
                 status: this.searchForm.status,
                 drugName: this.searchForm.drugName,
                 pageNum: this.pageNum,
@@ -435,10 +442,10 @@ new Vue({
         },
         
         calculateStats() {
-            this.completedCount = this.tableData.filter(item => item.status === '已完成').length;
+            this.completedCount = this.tableData.filter(item => item.status === '已完成' || item.status === '已入库').length;
             this.pendingCount = this.tableData.filter(item => item.status === '待审核').length;
             this.totalAmount = this.tableData.reduce((sum, item) => {
-                return sum + (parseFloat(item.payAmount) || 0);
+                return sum + (parseFloat(item.totalAmount) || 0);
             }, 0);
         },
 
@@ -479,9 +486,9 @@ new Vue({
 
         reset() {
             this.searchForm = {
-                orderId: '',
+                orderNo: '',
                 supplierId: '',
-                purchaserId: '',
+                operatorId: '',
                 drugName: '',
                 status: ''
             };
@@ -504,7 +511,9 @@ new Vue({
         getStatusClass(status) {
             const map = {
                 '待审核': 'status-tag status-pending',
-                '已审核': 'status-tag status-approved',
+                '已通过': 'status-tag status-approved',
+                '已驳回': 'status-tag status-danger',
+                '已入库': 'status-tag status-success',
                 '已完成': 'status-tag status-success',
                 '已取消': 'status-tag status-info'
             };

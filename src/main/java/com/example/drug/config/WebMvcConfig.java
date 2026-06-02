@@ -15,7 +15,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(permissionInterceptor)
-                .addPathPatterns("/drug/**", "/admin/**")
-                .excludePathPatterns("/admin/login", "/admin/register", "/admin/list", "/admin/status/**", "/drug/add", "/drug/update", "/drug/list", "/drug/status/**", "/drug/delete/**", "/login.html", "/drug.html", "/role.html", "/**/*.html");
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                    "/admin/login",       // 登录接口
+                    "/admin/register",    // 注册接口
+                    "/**/*.html",         // 静态HTML页面
+                    "/**/*.css",          // 静态CSS
+                    "/**/*.js",           // 静态JS
+                    "/**/*.png",          // 静态图片
+                    "/**/*.jpg",
+                    "/**/*.ico",
+                    "/**/*.svg",
+                    "/**/*.woff",
+                    "/**/*.woff2",
+                    "/**/*.ttf",
+                    "/media/**",          // 媒体资源
+                    "/error"              // 错误页面
+                );
     }
 }

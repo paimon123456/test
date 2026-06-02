@@ -69,8 +69,9 @@ public class OperationLogAspect {
             log.setResult("成功");
             log.setCreateTime(new Date());
 
-            setUserInfo(log);
-            operationLogService.save(log);
+            if (setUserInfo(log)) {
+                operationLogService.save(log);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -91,23 +92,29 @@ public class OperationLogAspect {
             log.setResult("失败");
             log.setCreateTime(new Date());
 
-            setUserInfo(log);
-            operationLogService.save(log);
+            if (setUserInfo(log)) {
+                operationLogService.save(log);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void setUserInfo(OperationLog log) {
+    private boolean setUserInfo(OperationLog log) {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
             log.setIp(IpUtil.getClientIp(request));
             Object userId = request.getSession().getAttribute("userId");
             Object username = request.getSession().getAttribute("userName");
-            log.setUserId(userId != null ? userId.toString() : "");
-            log.setUsername(username != null ? username.toString() : "未知用户");
+            // 未登录用户不记录操作日志
+            if (userId == null || userId.toString().isEmpty()) {
+                return false;
+            }
+            log.setUserId(userId.toString());
+            log.setUsername(username != null ? username.toString() : userId.toString());
         }
+        return true;
     }
 
     /**

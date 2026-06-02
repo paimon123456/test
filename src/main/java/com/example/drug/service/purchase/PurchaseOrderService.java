@@ -26,8 +26,8 @@ public interface PurchaseOrderService {
     /**
      * 查询采购单列表
      */
-    Result list(String orderNo, String supplierId, String status, String startDate, 
-                String endDate, Integer pageNum, Integer pageSize);
+    Result list(String orderNo, String supplierId, String operatorId, String status,
+                String drugName, String startDate, String endDate, Integer pageNum, Integer pageSize);
     
     /**
      * 查询采购单详情

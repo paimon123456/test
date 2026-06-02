@@ -242,10 +242,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
      * 查询采购单列表
      */
     @Override
-    public Result list(String orderNo, String supplierId, String status, String startDate, 
-                       String endDate, Integer pageNum, Integer pageSize) {
+    public Result list(String orderNo, String supplierId, String operatorId, String status,
+                       String drugName, String startDate, String endDate, Integer pageNum, Integer pageSize) {
         List<PurchaseOrder> orders = purchaseOrderMapper.selectPurchaseOrderList(
-                orderNo, supplierId, null, status, null, startDate, endDate);
+                orderNo, supplierId, operatorId, status, drugName, startDate, endDate);
         
         // 分页处理
         int total = orders.size();

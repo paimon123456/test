@@ -4,7 +4,7 @@
 
     <!-- 查询销售订单列表 -->
     <select id="selectOrderList" resultType="com.example.drug.entity.sales.SalesOrder">
-        SELECT 
+        SELECT DISTINCT
             so.*,
             u.real_name as cashier_name,
             m.name as member_name,
@@ -12,6 +12,8 @@
         FROM sales_order so
         LEFT JOIN sys_user u ON so.cashier_id = u.user_id
         LEFT JOIN member_info m ON so.member_id = m.member_id
+        LEFT JOIN sales_item si ON so.order_id = si.order_id
+        LEFT JOIN drug_info d ON si.drug_id = d.drug_id
         <where>
             <if test="orderId != null and orderId != ''">
                 AND so.order_id = #{orderId}
@@ -20,10 +22,13 @@
                 AND so.member_id = #{memberId}
             </if>
             <if test="cashierId != null and cashierId != ''">
-                AND so.cashier_id = #{cashierId}
+                AND (so.cashier_id = #{cashierId} OR u.real_name LIKE CONCAT('%', #{cashierId}, '%'))
             </if>
             <if test="status != null and status != ''">
                 AND so.status = #{status}
+            </if>
+            <if test="drugName != null and drugName != ''">
+                AND d.drug_name LIKE CONCAT('%', #{drugName}, '%')
             </if>
             <if test="startDate != null and startDate != ''">
                 AND so.order_time &gt;= #{startDate}

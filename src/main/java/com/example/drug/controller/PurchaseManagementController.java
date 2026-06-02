@@ -51,12 +51,15 @@ public class PurchaseManagementController {
     @GetMapping("/order/list")
     public Result listPurchaseOrder(@RequestParam(required = false) String orderNo,
                                    @RequestParam(required = false) String supplierId,
+                                   @RequestParam(required = false) String operatorId,
                                    @RequestParam(required = false) String status,
+                                   @RequestParam(required = false) String drugName,
                                    @RequestParam(required = false) String startDate,
                                    @RequestParam(required = false) String endDate,
                                    @RequestParam(defaultValue = "1") Integer pageNum,
                                    @RequestParam(defaultValue = "10") Integer pageSize) {
-        return purchaseOrderService.list(orderNo, supplierId, status, startDate, endDate, pageNum, pageSize);
+        return purchaseOrderService.list(orderNo, supplierId, operatorId, status, drugName,
+                                        startDate, endDate, pageNum, pageSize);
     }
     
     /**

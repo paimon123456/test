@@ -22,6 +22,7 @@ public interface SalesOrderMapper extends BaseMapper<SalesOrder> {
                                      @Param("memberId") String memberId,
                                      @Param("cashierId") String cashierId,
                                      @Param("status") String status,
+                                     @Param("drugName") String drugName,
                                      @Param("startDate") String startDate,
                                      @Param("endDate") String endDate);
     

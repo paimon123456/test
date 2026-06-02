@@ -17,7 +17,7 @@ public interface SalesOrderService {
      * 查询销售订单列表
      */
     Result list(String orderId, String memberId, String cashierId, String status,
-                String startDate, String endDate, Integer pageNum, Integer pageSize);
+                String drugName, String startDate, String endDate, Integer pageNum, Integer pageSize);
     
     /**
      * 根据订单ID查询详情（包含明细）

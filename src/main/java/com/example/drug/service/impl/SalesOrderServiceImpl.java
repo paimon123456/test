@@ -227,9 +227,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
      */
     @Override
     public Result list(String orderId, String memberId, String cashierId, String status,
-                       String startDate, String endDate, Integer pageNum, Integer pageSize) {
+                       String drugName, String startDate, String endDate, Integer pageNum, Integer pageSize) {
         List<SalesOrder> orders = salesOrderMapper.selectOrderList(
-                orderId, memberId, cashierId, status, startDate, endDate);
+                orderId, memberId, cashierId, status, drugName, startDate, endDate);
         
         // 分页处理（简化版，实际应使用PageHelper）
         int total = orders.size();

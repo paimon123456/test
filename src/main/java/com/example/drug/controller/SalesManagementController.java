@@ -43,12 +43,13 @@ public class SalesManagementController {
                              @RequestParam(required = false) String memberId,
                              @RequestParam(required = false) String cashierId,
                              @RequestParam(required = false) String status,
+                             @RequestParam(required = false) String drugName,
                              @RequestParam(required = false) String startDate,
                              @RequestParam(required = false) String endDate,
                              @RequestParam(defaultValue = "1") Integer pageNum,
                              @RequestParam(defaultValue = "10") Integer pageSize) {
-        return salesOrderService.list(orderId, memberId, cashierId, status, 
-                                      startDate, endDate, pageNum, pageSize);
+        return salesOrderService.list(orderId, memberId, cashierId, status,
+                                      drugName, startDate, endDate, pageNum, pageSize);
     }
     
     /**
