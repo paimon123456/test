@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>价格预警管理 - 药店管理系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f7fa; min-height: 100vh; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0 40px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: white; font-size: 20px; font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .header-right a { color: white; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ebeef5; }
+        .card-header h3 { font-size: 16px; color: #303133; }
+        .search-form { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 15px; }
+        .search-item { display: flex; align-items: center; gap: 8px; }
+        .search-item label { font-size: 14px; color: #606266; white-space: nowrap; }
+        .alert-count-badge { display: inline-flex; align-items: center; justify-content: center;
+            background: #f56c6c; color: white; font-size: 12px; border-radius: 10px;
+            padding: 2px 8px; margin-left: 8px; }
+        .switch-container { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 15px 0; }
+        .switch-item { display: flex; align-items: center; gap: 10px; }
+        .switch-item label { font-size: 14px; color: #303133; font-weight: 500; min-width: 140px; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1><i class="el-icon-bell"></i> 价格预警管理</h1>
+        <div class="header-right">
+            <a href="price.html"><i class="el-icon-price-tag"></i> 价格管理</a>
+            <a href="index.html"><i class="el-icon-s-home"></i> 返回首页</a>
+        </div>
+    </div>
+    <div class="container">
+        <!-- 预警配置卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="el-icon-setting"></i> 预警阈值配置</h3>
+                <el-button type="primary" size="small" icon="el-icon-check" @click="saveConfigs">保存配置</el-button>
+            </div>
+            <div class="switch-container">
+                <div class="switch-item">
+                    <label>售价低于进价预警：</label>
+                    <span style="color:#909399;width:200px;">售价 ≤ 进价时触发</span>
+                    <el-switch v-model="sellBelowConfig.enableStatus" :active-value="1" :inactive-value="0"></el-switch>
+                </div>
+                <div class="switch-item">
+                    <label>进价异常上涨预警：</label>
+                    <el-input-number v-model="purchaseSurgeConfig.thresholdPercent" :min="1" :max="100" :precision="0" size="small" style="width:120px;"></el-input-number>
+                    <span style="color:#909399;">% （涨幅超过此值触发预警）</span>
+                    <el-switch v-model="purchaseSurgeConfig.enableStatus" :active-value="1" :inactive-value="0"></el-switch>
+                </div>
+                <div class="switch-item">
+                    <label>售价异常上涨预警：</label>
+                    <el-input-number v-model="retailSurgeConfig.thresholdPercent" :min="1" :max="200" :precision="0" size="small" style="width:120px;"></el-input-number>
+                    <span style="color:#909399;">% （涨幅超过此值触发预警）</span>
+                    <el-switch v-model="retailSurgeConfig.enableStatus" :active-value="1" :inactive-value="0"></el-switch>
+                </div>
+            </div>
+            <el-alert title="配置说明：开启后系统定时任务每30分钟自动扫描异常价格，生成预警日志" type="info" :closable="false" show-icon></el-alert>
+        </div>
+
+        <!-- 预警日志卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>
+                    <i class="el-icon-document"></i> 预警日志
+                    <span class="alert-count-badge" v-if="unhandledCount > 0">{{ unhandledCount }}条待处理</span>
+                </h3>
+                <div>
+                    <el-button type="warning" size="small" icon="el-icon-search" @click="manualScan" :loading="scanning">立即扫描</el-button>
+                    <el-button type="primary" size="small" icon="el-icon-refresh" @click="loadLogs">刷新日志</el-button>
+                </div>
+            </div>
+            <!-- 搜索区域 -->
+            <div class="search-form">
+                <div class="search-item">
+                    <label>预警类型：</label>
+                    <el-select v-model="searchAlertType" placeholder="全部" clearable size="small" style="width:180px;" @change="loadLogs">
+                        <el-option label="全部" value=""></el-option>
+                        <el-option label="售价低于进价" value="SELL_BELOW_PURCHASE"></el-option>
+                        <el-option label="进价异常上涨" value="PURCHASE_SURGE"></el-option>
+                        <el-option label="售价异常上涨" value="RETAIL_SURGE"></el-option>
+                    </el-select>
+                </div>
+                <div class="search-item">
+                    <label>处理状态：</label>
+                    <el-select v-model="searchHandleStatus" placeholder="全部" clearable size="small" style="width:140px;" @change="loadLogs">
+                        <el-option label="全部" value=""></el-option>
+                        <el-option label="未处理" value="未处理"></el-option>
+                        <el-option label="已处理" value="已处理"></el-option>
+                        <el-option label="已忽略" value="已忽略"></el-option>
+                    </el-select>
+                </div>
+                <div class="search-item">
+                    <label>时间范围：</label>
+                    <el-date-picker v-model="searchDateRange" type="daterange" range-separator="至"
+                        start-placeholder="开始日期" end-placeholder="结束日期" size="small" style="width:260px;"
+                        value-format="yyyy-MM-dd" @change="loadLogs"></el-date-picker>
+                </div>
+            </div>
+
+            <!-- 预警日志列表 -->
+            <el-table :data="alertLogs" style="width: 100%;" stripe v-loading="loading" @row-click="showDetail">
+                <el-table-column prop="drugName" label="药品名称" width="140"></el-table-column>
+                <el-table-column prop="specification" label="规格" width="100"></el-table-column>
+                <el-table-column label="预警类型" width="130">
+                    <template slot-scope="scope">
+                        <el-tag v-if="scope.row.alertType === 'SELL_BELOW_PURCHASE'" type="danger" size="small">售价低于进价</el-tag>
+                        <el-tag v-else-if="scope.row.alertType === 'PURCHASE_SURGE'" type="warning" size="small">进价异常上涨</el-tag>
+                        <el-tag v-else-if="scope.row.alertType === 'RETAIL_SURGE'" type="danger" size="small">售价异常上涨</el-tag>
+                        <el-tag v-else size="small">{{ scope.row.alertType }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="严重级别" width="90">
+                    <template slot-scope="scope">
+                        <el-tag v-if="scope.row.alertLevel === '严重'" type="danger" size="small" effect="dark">严重</el-tag>
+                        <el-tag v-else type="warning" size="small">一般</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="alertContent" label="预警内容" min-width="280" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="currentPurchasePrice" label="进价(¥)" width="90"></el-table-column>
+                <el-table-column prop="currentRetailPrice" label="售价(¥)" width="90"></el-table-column>
+                <el-table-column label="处理状态" width="90">
+                    <template slot-scope="scope">
+                        <el-tag v-if="scope.row.handleStatus === '未处理'" type="danger" size="small">未处理</el-tag>
+                        <el-tag v-else-if="scope.row.handleStatus === '已处理'" type="success" size="small">已处理</el-tag>
+                        <el-tag v-else type="info" size="small">{{ scope.row.handleStatus }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="预警时间" width="160"></el-table-column>
+                <el-table-column label="操作" width="160" fixed="right">
+                    <template slot-scope="scope">
+                        <el-button v-if="scope.row.handleStatus === '未处理'" type="success" size="mini" @click.stop="handleAlert(scope.row, '已处理')">处理</el-button>
+                        <el-button v-if="scope.row.handleStatus === '未处理'" type="info" size="mini" @click.stop="handleAlert(scope.row, '已忽略')">忽略</el-button>
+                        <span v-else style="color:#c0c4cc;font-size:12px;">已完结</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <el-dialog title="预警详情" :visible.sync="detailVisible" width="550px">
+        <el-descriptions :column="2" border>
+            <el-descriptions-item label="药品名称">{{ detail.drugName }}</el-descriptions-item>
+            <el-descriptions-item label="规格">{{ detail.specification }}</el-descriptions-item>
+            <el-descriptions-item label="预警类型">
+                <el-tag v-if="detail.alertType === 'SELL_BELOW_PURCHASE'" type="danger" size="small">售价低于进价</el-tag>
+                <el-tag v-else-if="detail.alertType === 'PURCHASE_SURGE'" type="warning" size="small">进价异常上涨</el-tag>
+                <el-tag v-else-if="detail.alertType === 'RETAIL_SURGE'" type="danger" size="small">售价异常上涨</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="严重级别">
+                <el-tag v-if="detail.alertLevel === '严重'" type="danger" size="small">严重</el-tag>
+                <el-tag v-else type="warning" size="small">一般</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="当前进价">¥{{ detail.currentPurchasePrice }}</el-descriptions-item>
+            <el-descriptions-item label="当前售价">¥{{ detail.currentRetailPrice }}</el-descriptions-item>
+            <el-descriptions-item label="处理状态">{{ detail.handleStatus }}</el-descriptions-item>
+            <el-descriptions-item label="处理人">{{ detail.handler || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="预警时间" :span="2">{{ detail.createTime }}</el-descriptions-item>
+            <el-descriptions-item label="预警内容" :span="2">{{ detail.alertContent }}</el-descriptions-item>
+            <el-descriptions-item label="处理备注" :span="2">{{ detail.handleRemark || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <div slot="footer" v-if="detail.handleStatus === '未处理'">
+            <el-button @click="detailVisible = false">关闭</el-button>
+            <el-button type="success" @click="handleFromDetail('已处理')">标记已处理</el-button>
+            <el-button type="info" @click="handleFromDetail('已忽略')">忽略</el-button>
+        </div>
+    </el-dialog>
+</div>
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        sellBelowConfig: { alertType: 'SELL_BELOW_PURCHASE', thresholdPercent: 0, enableStatus: 0 },
+        purchaseSurgeConfig: { alertType: 'PURCHASE_SURGE', thresholdPercent: 20, enableStatus: 0 },
+        retailSurgeConfig: { alertType: 'RETAIL_SURGE', thresholdPercent: 50, enableStatus: 0 },
+        alertLogs: [],
+        unhandledCount: 0,
+        loading: false,
+        scanning: false,
+        searchAlertType: '',
+        searchHandleStatus: '',
+        searchDateRange: null,
+        detailVisible: false,
+        detail: {}
+    },
+    created() {
+        this.loadConfigs();
+        this.loadLogs();
+        this.loadUnhandledCount();
+    },
+    methods: {
+        loadConfigs() {
+            fetch('/price-alert/configs')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.code === 200) {
+                        res.data.forEach(c => {
+                            if (c.alertType === 'SELL_BELOW_PURCHASE') {
+                                this.sellBelowConfig = Object.assign({}, c);
+                            } else if (c.alertType === 'PURCHASE_SURGE') {
+                                this.purchaseSurgeConfig = Object.assign({}, c);
+                            } else if (c.alertType === 'RETAIL_SURGE') {
+                                this.retailSurgeConfig = Object.assign({}, c);
+                            }
+                        });
+                    }
+                });
+        },
+        saveConfigs() {
+            Promise.all([
+                fetch('/price-alert/config/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alertType: 'SELL_BELOW_PURCHASE',
+                        thresholdPercent: 0,
+                        enableStatus: this.sellBelowConfig.enableStatus
+                    })
+                }),
+                fetch('/price-alert/config/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alertType: 'PURCHASE_SURGE',
+                        thresholdPercent: this.purchaseSurgeConfig.thresholdPercent,
+                        enableStatus: this.purchaseSurgeConfig.enableStatus
+                    })
+                }),
+                fetch('/price-alert/config/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alertType: 'RETAIL_SURGE',
+                        thresholdPercent: this.retailSurgeConfig.thresholdPercent,
+                        enableStatus: this.retailSurgeConfig.enableStatus
+                    })
+                })
+            ]).then(() => {
+                this.$message.success('预警配置保存成功');
+                this.loadConfigs();
+            });
+        },
+        loadLogs() {
+            this.loading = true;
+            let url = '/price-alert/logs?';
+            if (this.searchAlertType) url += 'alertType=' + this.searchAlertType + '&';
+            if (this.searchHandleStatus) url += 'handleStatus=' + this.searchHandleStatus + '&';
+            if (this.searchDateRange && this.searchDateRange.length === 2) {
+                url += 'startDate=' + this.searchDateRange[0] + '&endDate=' + this.searchDateRange[1] + '&';
+            }
+            fetch(url)
+                .then(r => r.json())
+                .then(res => {
+                    this.loading = false;
+                    if (res.code === 200) {
+                        this.alertLogs = res.data || [];
+                    }
+                })
+                .catch(() => { this.loading = false; });
+        },
+        loadUnhandledCount() {
+            fetch('/price-alert/log/unhandled-count')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.code === 200) {
+                        this.unhandledCount = res.data;
+                    }
+                });
+        },
+        manualScan() {
+            this.scanning = true;
+            fetch('/price-alert/scan', { method: 'POST' })
+                .then(r => r.json())
+                .then(res => {
+                    this.scanning = false;
+                    if (res.code === 200) {
+                        this.$message.success(res.data || '预警扫描完成');
+                    } else {
+                        this.$message.error(res.msg);
+                    }
+                    this.loadLogs();
+                    this.loadUnhandledCount();
+                })
+                .catch(() => { this.scanning = false; });
+        },
+        handleAlert(row, status) {
+            this.$prompt('请输入处理备注', '处理预警', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                inputPlaceholder: status === '已处理' ? '已核实并处理...' : '暂不处理原因...'
+            }).then(({ value }) => {
+                fetch('/price-alert/log/handle?alertId=' + row.alertId +
+                    '&handleStatus=' + status + '&handler=管理员&handleRemark=' + encodeURIComponent(value || ''), {
+                    method: 'POST'
+                }).then(r => r.json()).then(res => {
+                    if (res.code === 200) {
+                        this.$message.success('处理成功');
+                        this.loadLogs();
+                        this.loadUnhandledCount();
+                    } else {
+                        this.$message.error(res.msg);
+                    }
+                });
+            }).catch(() => {});
+        },
+        showDetail(row) {
+            fetch('/price-alert/log/' + row.alertId)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.code === 200) {
+                        this.detail = res.data;
+                        this.detailVisible = true;
+                    }
+                });
+        },
+        handleFromDetail(status) {
+            this.handleAlert(this.detail, status);
+            this.detailVisible = false;
+        }
+    }
+});
+</script>
+</body>
+</html>

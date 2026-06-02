@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.drug.mapper.PriceAlertMapper">
+
+    <!-- ======================== 预警配置 ======================== -->
+    <select id="getAlertConfigs" resultType="com.example.drug.entity.price.PriceAlertConfig">
+        SELECT
+            config_id AS configId,
+            alert_type AS alertType,
+            threshold_percent AS thresholdPercent,
+            enable_status AS enableStatus,
+            remark,
+            create_time AS createTime,
+            update_time AS updateTime
+        FROM price_alert_config
+        ORDER BY alert_type
+    </select>
+
+    <select id="getAlertConfigByType" resultType="com.example.drug.entity.price.PriceAlertConfig">
+        SELECT
+            config_id AS configId,
+            alert_type AS alertType,
+            threshold_percent AS thresholdPercent,
+            enable_status AS enableStatus,
+            remark,
+            create_time AS createTime,
+            update_time AS updateTime
+        FROM price_alert_config
+        WHERE alert_type = #{alertType}
+    </select>
+
+    <insert id="saveAlertConfig" parameterType="com.example.drug.entity.price.PriceAlertConfig">
+        INSERT INTO price_alert_config (config_id, alert_type, threshold_percent, enable_status, remark, create_time)
+        VALUES (#{configId}, #{alertType}, #{thresholdPercent}, #{enableStatus}, #{remark}, NOW())
+    </insert>
+
+    <update id="updateAlertConfig" parameterType="com.example.drug.entity.price.PriceAlertConfig">
+        UPDATE price_alert_config
+        <set>
+            <if test="thresholdPercent != null">threshold_percent = #{thresholdPercent},</if>
+            <if test="enableStatus != null">enable_status = #{enableStatus},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = NOW()
+        </set>
+        WHERE config_id = #{configId}
+    </update>
+
+    <!-- ======================== 预警日志 ======================== -->
+    <select id="getAlertLogs" resultType="com.example.drug.entity.price.PriceAlertLog">
+        SELECT
+            pal.alert_id AS alertId,
+            pal.drug_id AS drugId,
+            pal.alert_type AS alertType,
+            pal.alert_level AS alertLevel,
+            pal.alert_content AS alertContent,
+            pal.current_purchase_price AS currentPurchasePrice,
+            pal.current_retail_price AS currentRetailPrice,
+            pal.threshold_percent AS thresholdPercent,
+            pal.handle_status AS handleStatus,
+            pal.handler,
+            pal.handle_time AS handleTime,
+            pal.handle_remark AS handleRemark,
+            pal.create_time AS createTime,
+            d.drug_name AS drugName,
+            d.specification
+        FROM price_alert_log pal
+        INNER JOIN drug_info d ON pal.drug_id = d.drug_id
+        WHERE 1=1
+        <if test="drugId != null and drugId != ''">
+            AND pal.drug_id = #{drugId}
+        </if>
+        <if test="alertType != null and alertType != ''">
+            AND pal.alert_type = #{alertType}
+        </if>
+        <if test="handleStatus != null and handleStatus != ''">
+            AND pal.handle_status = #{handleStatus}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND DATE(pal.create_time) >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(pal.create_time) &lt;= #{endDate}
+        </if>
+        ORDER BY pal.create_time DESC
+    </select>
+
+    <select id="getAlertLogById" resultType="com.example.drug.entity.price.PriceAlertLog">
+        SELECT
+            pal.alert_id AS alertId,
+            pal.drug_id AS drugId,
+            pal.alert_type AS alertType,
+            pal.alert_level AS alertLevel,
+            pal.alert_content AS alertContent,
+            pal.current_purchase_price AS currentPurchasePrice,
+            pal.current_retail_price AS currentRetailPrice,
+            pal.threshold_percent AS thresholdPercent,
+            pal.handle_status AS handleStatus,
+            pal.handler,
+            pal.handle_time AS handleTime,
+            pal.handle_remark AS handleRemark,
+            pal.create_time AS createTime,
+            d.drug_name AS drugName,
+            d.specification
+        FROM price_alert_log pal
+        INNER JOIN drug_info d ON pal.drug_id = d.drug_id
+        WHERE pal.alert_id = #{alertId}
+    </select>
+
+    <insert id="saveAlertLog" parameterType="com.example.drug.entity.price.PriceAlertLog">
+        INSERT INTO price_alert_log (alert_id, drug_id, alert_type, alert_level, alert_content,
+            current_purchase_price, current_retail_price, threshold_percent, handle_status, create_time)
+        VALUES (#{alertId}, #{drugId}, #{alertType}, #{alertLevel}, #{alertContent},
+            #{currentPurchasePrice}, #{currentRetailPrice}, #{thresholdPercent}, '未处理', NOW())
+    </insert>
+
+    <update id="updateAlertLogHandle">
+        UPDATE price_alert_log
+        SET handle_status = #{handleStatus},
+            handler = #{handler},
+            handle_remark = #{handleRemark},
+            handle_time = NOW()
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <select id="countUnhandledAlert" resultType="int">
+        SELECT COUNT(*) FROM price_alert_log WHERE handle_status = '未处理'
+    </select>
+
+    <!-- ======================== 价格预警扫描SQL ======================== -->
+
+    <!-- 售价低于进价：retailPrice <= purchasePrice + (进价 * 阈值百分比) -->
+    <select id="findSellBelowPurchase" resultType="com.example.drug.entity.price.PriceAlertLog">
+        SELECT
+            d.drug_id AS drugId,
+            'SELL_BELOW_PURCHASE' AS alertType,
+            CASE
+                WHEN COALESCE(dp.retail_price, d.retail_price) = COALESCE(dp.purchase_price, d.purchase_price)
+                    THEN '严重'
+                WHEN COALESCE(dp.retail_price, d.retail_price) &lt; COALESCE(dp.purchase_price, d.purchase_price)
+                    THEN '严重'
+                ELSE '一般'
+            END AS alertLevel,
+            CONCAT('药品 [', d.drug_name, '] 售价低于进价：',
+                   '进价=¥', COALESCE(dp.purchase_price, d.purchase_price),
+                   '，售价=¥', COALESCE(dp.retail_price, d.retail_price),
+                   '，差价=¥', COALESCE(dp.retail_price, d.retail_price) - COALESCE(dp.purchase_price, d.purchase_price)) AS alertContent,
+            COALESCE(dp.purchase_price, d.purchase_price) AS currentPurchasePrice,
+            COALESCE(dp.retail_price, d.retail_price) AS currentRetailPrice,
+            #{thresholdPercent} AS thresholdPercent
+        FROM drug_info d
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        WHERE d.status = 1
+            AND COALESCE(dp.retail_price, d.retail_price) IS NOT NULL
+            AND COALESCE(dp.purchase_price, d.purchase_price) IS NOT NULL
+            AND COALESCE(dp.retail_price, d.retail_price) &lt;= COALESCE(dp.purchase_price, d.purchase_price)
+            AND d.drug_id NOT IN (
+                SELECT pal2.drug_id FROM price_alert_log pal2
+                WHERE pal2.alert_type = 'SELL_BELOW_PURCHASE'
+                    AND pal2.handle_status = '未处理'
+                    AND DATE(pal2.create_time) = CURDATE()
+            )
+    </select>
+
+    <!-- 进价异常上涨：查询近30天内进价上涨超过阈值的药品 -->
+    <select id="findPurchaseSurge" resultType="com.example.drug.entity.price.PriceAlertLog">
+        SELECT
+            d.drug_id AS drugId,
+            'PURCHASE_SURGE' AS alertType,
+            CASE
+                WHEN change_rate >= 50 THEN '严重'
+                ELSE '一般'
+            END AS alertLevel,
+            CONCAT('药品 [', d.drug_name, '] 进价异常上涨：',
+                   '原进价=¥', ph.old_price,
+                   '，新进价=¥', ph.new_price,
+                   '，涨幅=', ROUND(ph.change_rate, 2), '%') AS alertContent,
+            ph.new_price AS currentPurchasePrice,
+            COALESCE(dp.retail_price, d.retail_price) AS currentRetailPrice,
+            #{thresholdPercent} AS thresholdPercent
+        FROM price_history ph
+        INNER JOIN drug_info d ON ph.drug_id = d.drug_id
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        WHERE ph.price_type = 'purchase'
+            AND ph.change_rate >= #{thresholdPercent}
+            AND ph.create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            AND d.status = 1
+            AND NOT EXISTS (
+                SELECT 1 FROM price_alert_log pal2
+                WHERE pal2.alert_type = 'PURCHASE_SURGE'
+                    AND pal2.drug_id = ph.drug_id
+                    AND pal2.handle_status = '未处理'
+                    AND DATE(pal2.create_time) = CURDATE()
+            )
+        GROUP BY d.drug_id, d.drug_name, ph.old_price, ph.new_price, ph.change_rate, dp.retail_price
+    </select>
+
+    <!-- 售价异常上涨：查询近30天内零售价上涨超过阈值的药品 -->
+    <select id="findRetailSurge" resultType="com.example.drug.entity.price.PriceAlertLog">
+        SELECT
+            d.drug_id AS drugId,
+            'RETAIL_SURGE' AS alertType,
+            CASE
+                WHEN ph.change_rate >= 100 THEN '严重'
+                WHEN ph.change_rate >= 50 THEN '严重'
+                ELSE '一般'
+            END AS alertLevel,
+            CONCAT('药品 [', d.drug_name, '] 售价异常上涨：',
+                   '原售价=¥', ph.old_price,
+                   '，新售价=¥', ph.new_price,
+                   '，涨幅=', ROUND(ph.change_rate, 2), '%') AS alertContent,
+            COALESCE(dp.purchase_price, d.purchase_price) AS currentPurchasePrice,
+            ph.new_price AS currentRetailPrice,
+            #{thresholdPercent} AS thresholdPercent
+        FROM price_history ph
+        INNER JOIN drug_info d ON ph.drug_id = d.drug_id
+        LEFT JOIN drug_price dp ON d.drug_id = dp.drug_id
+        WHERE ph.price_type = 'retail'
+            AND ph.change_rate >= #{thresholdPercent}
+            AND ph.create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            AND d.status = 1
+            AND NOT EXISTS (
+                SELECT 1 FROM price_alert_log pal2
+                WHERE pal2.alert_type = 'RETAIL_SURGE'
+                    AND pal2.drug_id = ph.drug_id
+                    AND pal2.handle_status = '未处理'
+                    AND DATE(pal2.create_time) = CURDATE()
+            )
+        GROUP BY d.drug_id, d.drug_name, ph.old_price, ph.new_price, ph.change_rate, dp.purchase_price
+    </select>
+
+</mapper>
